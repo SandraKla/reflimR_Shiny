@@ -1,13 +1,11 @@
 # Shiny App for reflimR
 
-<img src="www/reflimR.png" width="225px" height="150px" align="right"/>
+<img src="www/reflimR.png" width="300px" height="300px" align="right"/>
 
 ![](https://img.shields.io/github/license/SandraKla/reflimR_Shiny.svg)
 ![](https://img.shields.io/github/last-commit/SandraKla/Zlog_AdRI/reflimR_Shiny.svg)
 
 This Shiny App is based on the package **reflimR** for the estimation of reference limits from routine laboratory results.
-
-<img src="www/shiny.png" align="center"/>
 
 ## Installation 
 
@@ -35,6 +33,8 @@ And then start the app with the following code:
 ```bash
 runApp("app.R")
 ```
+
+<img src="www/shiny.png" align="center"/>
 
 The package [reflimR](https://github.com/reflim/reflimR) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.1.2 (2021-11-01).
 
