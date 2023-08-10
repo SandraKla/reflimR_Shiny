@@ -19,7 +19,7 @@ if("shiny" %in% rownames(installed.packages())){
 runGitHub("reflimR_Shiny", "SandraKla")
 ```
 
-**Method 2** (not recommended):
+**Method 2**:
 Download the Zip-File from this Shiny App. Unzip the file and set your working direction to the path of the folder. 
 The package [shiny](https://cran.r-project.org/web/packages/shiny/index.html) (≥ 1.7.1) must be installed before using the Shiny App:
 
