@@ -14,12 +14,14 @@ if("shinydashboard" %in% rownames(installed.packages())){
     install.packages("shinydashboard")
     library(shinydashboard)}
 
+dataset_original <- reflimR::livertests
+
 ####################################### User Interface ############################################
 
 ui <- dashboardPage(
-  dashboardHeader(title = "reflimR", titleWidth = 350),
+  dashboardHeader(title = "reflimR", titleWidth = 300),
   dashboardSidebar(
-    width = 350,
+    width = 300,
     sidebarMenu(
       id = "sidebarid",
       
@@ -30,30 +32,37 @@ ui <- dashboardPage(
         "from routine laboratory results", hr(),
       ),
       
-      fileInput(
-        "data_table",
-        "Upload CSV File:",
-        accept = c("text/csv",
-                   "text/comma-separated-values,text/plain",
-                   ".csv")
+      selectInput(
+        "parameter",
+        "Select the lab parameter:",
+        choices = colnames(dataset_original)[4:length(colnames(dataset_original))],
+        selected = TRUE
       ),
       
       selectInput(
         "sex",
         "Select the sex:",
-        choices = c("Female (F)" = "f", "Male (M)" = "m")
+        choices = c("Female (F) & Male (M)" = "t", "Female (F)" = "f", "Male (M)" = "m")
       ),
+      
+      checkboxInput("check_plot.all", "View all plots"),
       
       hr(),
       
-      checkboxInput("check_target", "Target values"),
+      div(
+        style = "text-align:center",
+        br(),
+        "Target values"),
+      
+      checkboxInput("check_targetvalues", "Load target values from *targetvalues*", value = FALSE),
+      checkboxInput("check_target", "Own target values", value = FALSE),
       
       conditionalPanel(
         condition = "input.check_target == true",
         
           numericInput(
             "target_low",
-            "Target lower value:",
+            "Lower value:",
             10,
             min = 0,
             max = 10000
@@ -61,7 +70,7 @@ ui <- dashboardPage(
       
           numericInput(
             "target_upper",
-            "Target upper value:",
+            "Upper value:",
             15,
             min = 0,
             max = 10000
@@ -70,13 +79,9 @@ ui <- dashboardPage(
       
       hr(),
       
-      checkboxInput("check_plot.all", "View all plots"),
-      
-      hr(),
-      
       div(
         style = "text-align:center",
-        "For further information visit our R-package",
+        "For further information visit", br(), "our R-package",
         a("reflimR", href = "https://github.com/reflim/reflimR"), "!"
       )
     )
@@ -92,9 +97,7 @@ ui <- dashboardPage(
         "Plot",
         icon = icon("chart-line"),
         
-        p(
-          "This Shiny App is based on the package reflimR for the estimation of reference limits from routine laboratory results."
-        ),
+        p("This Shiny App is based on the package reflimR for the estimation of reference limits from routine laboratory results."),
         
         plotOutput("plot", height = "700px")
       )
@@ -119,17 +122,47 @@ server <- function(input, output, session) {
   options(shiny.sanitize.errors = TRUE)
   options(warn = -1)
   
+  # Create a reactive values to track the state of the checkboxes
+  reactive_values <- reactiveValues(
+    check_targetvalues = FALSE,
+    check_target = FALSE
+  )
+  
+  # Observe changes in check_targetvalues and update the reactive value
+  observeEvent(input$check_targetvalues, {
+    if (input$check_targetvalues) {
+      reactive_values$check_targetvalues <- TRUE
+      reactive_values$check_target <- FALSE
+    } else {
+      reactive_values$check_targetvalues <- FALSE
+    }
+  })
+  
+  # Observe changes in check_target and update the reactive value
+  observeEvent(input$check_target, {
+    if (input$check_target) {
+      reactive_values$check_target <- TRUE
+      reactive_values$check_targetvalues <- FALSE
+    } else {
+      reactive_values$check_target <- FALSE
+    }
+  })
+  
+  # Update the checkboxes based on the reactive value
+  observe({
+    updateCheckboxInput(session, "check_targetvalues", value = reactive_values$check_targetvalues)
+    updateCheckboxInput(session, "check_target", value = reactive_values$check_target)
+  })
+  
   ##################################### Reactive Expressions ######################################
   
   get_data_file <- reactive({
-
-    saving <- 
-      if(!is.null(input$data_table)){
-        #dataset_original <- read.csv(input$data_table[["datapath"]],na.strings="", fileEncoding="latin1")
-      }else{
-        dataset_original <- reflimR::livertests
-        dataset_original <- dataset_original[c(1,2,3,6)]
-      }
+    
+    dataset_original <- reflimR::livertests
+        
+    column_number <- which(names(dataset_original) == input$parameter)
+    dataset_original <- dataset_original[c(1,2,3,column_number)]
+        
     return(dataset_original)
   })
   
@@ -154,31 +187,41 @@ server <- function(input, output, session) {
   output$plot <- renderPlot({
     
     dat <- reflim_data()
+
+    reflimR.plot.all <- FALSE
     
-    if (input$check_plot.all == FALSE) {
-      if (input$check_target) {
-        validate(
-          need(
-            input$target_low < input$target_upper,
-            "(reflim) the upper target limit must be greater than the lower target limit."
-          )
-        )
-        reflim(dat[, 4], target = c(input$target_low, input$target_upper))
-      } else{
-        reflim(dat[, 4])
+    if (input$check_plot.all) {
+      reflimR.plot.all <- TRUE
+    } 
+    
+    if (input$check_target) {
+      validate(need(input$target_low < input$target_upper,
+                    "(reflim) the upper target limit must be greater than the lower target limit."))
+      
+      reflim(dat[, 4], targets = c(input$target_low, input$target_upper), plot.all = reflimR.plot.all)
+    }
+    
+    if (input$check_targetvalues) {
+      validate(need(input$sex != "t",
+                    "(reflim) The reference intervals are sex-specific. Please select a sex."))
+      
+      targets <- reflimR::targetvalues
+      targets_values <- targets[targets$analyte == input$parameter,]
+      
+      if (input$sex == "m") {
+        targetvalues_low <-  targets_values[, 5]
+        targetvalues_upper <- targets_values[, 6]
       }
-    } else{
-      if (input$check_target) {
-        validate(
-          need(
-            input$target_low < input$target_upper,
-            "(reflim) the upper target limit must be greater than the lower target limit."
-          )
-        )
-        reflim(dat[, 4], target = c(input$target_low, input$target_upper), plot.all = TRUE)
-      } else{
-        reflim(dat[, 4], plot.all = TRUE)
+      if (input$sex == "f") {
+        targetvalues_low <- targets_values[, 3]
+        targetvalues_upper <- targets_values[, 4]
       }
+      
+      reflim(dat[, 4], targets = c(targetvalues_low, targetvalues_upper), plot.all = reflimR.plot.all)
+    }
+    
+    if (input$check_target == FALSE && input$check_targetvalues == FALSE) {
+      reflim(dat[, 4], plot.all = reflimR.plot.all)
     }
   })
   
@@ -186,13 +229,37 @@ server <- function(input, output, session) {
 
     dat <- reflim_data()
     
+    if(input$check_target == FALSE && input$check_targetvalues == FALSE){
+      reflim_text <- reflim(dat[,4], plot.it = FALSE)
+    }
+    
     if(input$check_target){
       validate(need(input$target_low < input$target_upper, 
                     "(reflim) the upper target limit must be greater than the lower target limit."))
-      reflim(dat[,4], target = c(input$target_low, input$target_upper), plot.it = FALSE)
-    } else{
-      reflim(dat[,4], plot.it = FALSE)
+      
+      reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), plot.it = FALSE)
     }
+    
+    if(input$check_targetvalues){
+      
+      validate(need(input$sex != "t", 
+                    "(reflim) The reference intervals are sex-specific. Please select a sex."))
+      
+      targets <- reflimR::targetvalues
+      targets_values <- targets[targets$analyte == input$parameter, ]
+      
+      if (input$sex == "m") {
+        targetvalues_low <-  targets_values[, 5]
+        targetvalues_upper <- targets_values[, 6]
+      }
+      if (input$sex == "f") {
+        targetvalues_low <- targets_values[, 3]
+        targetvalues_upper <- targets_values[, 4]
+      }
+      reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), plot.it = FALSE)
+    }
+    
+    print(reflim_text)
   })
 }
 ####################################### Run the application #######################################
