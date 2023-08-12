@@ -3,7 +3,7 @@
 <img src="www/reflimR.png" width="300px" height="300px" align="right"/>
 
 ![](https://img.shields.io/github/license/SandraKla/reflimR_Shiny.svg)
-![](https://img.shields.io/github/last-commit/SandraKla/Zlog_AdRI/reflimR_Shiny.svg)
+![](https://img.shields.io/github/last-commit/SandraKla/reflimR_Shiny.svg)
 
 This Shiny App is based on the package **reflimR** for the estimation of reference limits from routine laboratory results.
 
