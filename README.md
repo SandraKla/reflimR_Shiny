@@ -51,7 +51,7 @@ These columns should be used for new data:
 * **Value**: Column name is the analyte name, values are the laboratory measures
 -->
 
-### Usage
+## Usage
 
 On the left side, you can use the sidebar to choose the lab parameters and gender. Below in the "Target Values" section, you can load the data from *targetvalues* or enter your own values. By clicking on "View all plots", all the plots from the different steps can be displayed. In the main panel, you will see the corresponding plot and the console's output.
 
