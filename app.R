@@ -99,7 +99,7 @@ ui <- dashboardPage(
         
         p("This Shiny App is based on the package reflimR for the estimation of reference limits from routine laboratory results."),
         
-        plotOutput("plot", height = "700px")
+        verbatimTextOutput("messageOutput"), plotOutput("plot", height = "700px")
       )
     ),
     
@@ -198,7 +198,7 @@ server <- function(input, output, session) {
       validate(need(input$target_low < input$target_upper,
                     "(reflim) the upper target limit must be greater than the lower target limit."))
       
-      reflim(dat[, 4], targets = c(input$target_low, input$target_upper), plot.all = reflimR.plot.all)
+      reflim_result <- reflim(dat[, 4], targets = c(input$target_low, input$target_upper), plot.all = reflimR.plot.all)
     }
     
     if (input$check_targetvalues) {
@@ -217,11 +217,19 @@ server <- function(input, output, session) {
         targetvalues_upper <- targets_values[, 4]
       }
       
-      reflim(dat[, 4], targets = c(targetvalues_low, targetvalues_upper), plot.all = reflimR.plot.all)
+      reflim_result <- reflim(dat[, 4], targets = c(targetvalues_low, targetvalues_upper), plot.all = reflimR.plot.all)
     }
     
     if (input$check_target == FALSE && input$check_targetvalues == FALSE) {
-      reflim(dat[, 4], plot.all = reflimR.plot.all)
+      reflim_result <- reflim(dat[, 4], plot.all = reflimR.plot.all)
+    }
+    
+    reflim_result
+    
+    if(is.null(reflim_result$limits)){
+      plot_is_empty <<- TRUE
+    } else{
+      plot_is_empty <<- FALSE
     }
   })
   
@@ -260,6 +268,15 @@ server <- function(input, output, session) {
     }
     
     print(reflim_text)
+  })
+  
+  output$messageOutput <- renderPrint({
+    
+    dat <- reflim_data()
+    
+    if (plot_is_empty) {
+      "(reflim) n or n.trunc is too small where a minimum of 200 is required! Try another example!"
+    }
   })
 }
 ####################################### Run the application #######################################

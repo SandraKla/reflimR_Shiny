@@ -41,6 +41,7 @@ The package [reflimR](https://github.com/reflim/reflimR) and [shinydashboard](ht
 ### Preloaded dataset
 Data from the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HCV+data) showing *livertests* has been preloaded into this Shiny App. In addition, the corresponding reference intervals are stored in *targetvalues*. The reference interval table has been derived from the data published in the [Clinical Laboratory Diagnostics](https://www.clinical-laboratory-diagnostics.com) by Lothar Thomas, MD. 
 
+<!--- 
 ### New data
 These columns should be used for new data:
 
@@ -48,6 +49,11 @@ These columns should be used for new data:
 * **Age**: Age in years
 * **Sex**: "m" for male and "f" for female
 * **Value**: Column name is the analyte name, values are the laboratory measures
+-->
+
+### Usage
+
+On the left side, you can use the sidebar to choose the lab parameters and gender. Below in the "Target Values" section, you can load the data from *targetvalues* or enter your own values. By clicking on "View all plots", all the plots from the different steps can be displayed. In the main panel, you will see the corresponding plot and the console's output.
 
 ## Contact
 
