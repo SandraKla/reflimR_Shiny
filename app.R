@@ -19,9 +19,9 @@ dataset_original <- reflimR::livertests
 ####################################### User Interface ############################################
 
 ui <- dashboardPage(
-  dashboardHeader(title = "reflimR", titleWidth = 300),
+  dashboardHeader(title = "reflimR", titleWidth = 250),
   dashboardSidebar(
-    width = 300,
+    width = 250,
     sidebarMenu(
       id = "sidebarid",
       
@@ -45,16 +45,23 @@ ui <- dashboardPage(
         choices = c("Female (F) & Male (M)" = "t", "Female (F)" = "f", "Male (M)" = "m")
       ),
       
+      numericInput(
+        "nmin",
+        "Select n.min:",
+        200,
+        min = 40,
+        max = 1000
+      ),
+      
       checkboxInput("check_plot.all", "View all plots"),
       
       hr(),
       
       div(
         style = "text-align:center",
-        br(),
         "Target values"),
       
-      checkboxInput("check_targetvalues", "Load target values from *targetvalues*", value = FALSE),
+      checkboxInput("check_targetvalues", "Load *targetvalues*", value = FALSE),
       checkboxInput("check_target", "Own target values", value = FALSE),
       
       conditionalPanel(
@@ -88,27 +95,23 @@ ui <- dashboardPage(
   ),
   
   dashboardBody(fluidRow(
-    tabBox(
-      title = "reflimR",
+    box(
+      title = tagList(shiny::icon("chart-line"), "Plot"),
       id = "tabselected",
-      width = 8,
+      width = 7,
+      solidHeader = TRUE,
+      status = "info",
       
-      tabPanel(
-        "Plot",
-        icon = icon("chart-line"),
-        
-        p("This Shiny App is based on the package reflimR for the estimation of reference limits from routine laboratory results."),
-        
-        verbatimTextOutput("messageOutput"), plotOutput("plot", height = "700px")
-      )
+      p("This Shiny App is based on the package reflimR for the estimation of reference limits from routine laboratory results."),
+      plotOutput("plot", height = "700px")
     ),
     
     box(
-      title = tagList(shiny::icon("info"), "Reference Limits"),
+      title = tagList(shiny::icon("info"), "Console"),
       status = "info",
-      width = 4,
+      width = 5,
       solidHeader = TRUE,
-
+      
       verbatimTextOutput("console")
     )
   ))
@@ -158,6 +161,13 @@ server <- function(input, output, session) {
   
   get_data_file <- reactive({
     
+    input$nmin
+    input$sex
+    input$parameter
+    input$check_plot.all
+    input$check_targetvalues
+    input$check_target
+    
     dataset_original <- reflimR::livertests
         
     column_number <- which(names(dataset_original) == input$parameter)
@@ -192,13 +202,22 @@ server <- function(input, output, session) {
     
     if (input$check_plot.all) {
       reflimR.plot.all <- TRUE
-    } 
+    }
     
     if (input$check_target) {
       validate(need(input$target_low < input$target_upper,
                     "(reflim) the upper target limit must be greater than the lower target limit."))
       
-      reflim_result <- reflim(dat[, 4], targets = c(input$target_low, input$target_upper), plot.all = reflimR.plot.all)
+      validate(need(input$target_low > 0, 
+                    "(reflim) the lower target limit must be greater than 0."))
+
+      validate(need(input$target_upper > 0, 
+                      "(reflim) the upper target limit must be greater than 0."))
+
+      validate(need(input$target_low > 0 && input$target_upper > 0, 
+                      "(reflim) the lower and upper target limit must be greater than 0."))
+
+      reflim_result <- reflim(dat[, 4], targets = c(input$target_low, input$target_upper), n.min = input$nmin, plot.all = reflimR.plot.all)
     }
     
     if (input$check_targetvalues) {
@@ -217,20 +236,14 @@ server <- function(input, output, session) {
         targetvalues_upper <- targets_values[, 4]
       }
       
-      reflim_result <- reflim(dat[, 4], targets = c(targetvalues_low, targetvalues_upper), plot.all = reflimR.plot.all)
+      reflim_result <- reflim(dat[, 4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.all = reflimR.plot.all)
     }
     
     if (input$check_target == FALSE && input$check_targetvalues == FALSE) {
-      reflim_result <- reflim(dat[, 4], plot.all = reflimR.plot.all)
+      reflim_result <- reflim(dat[, 4], n.min = input$nmin, plot.all = reflimR.plot.all)
     }
     
     reflim_result
-    
-    if(is.null(reflim_result$limits)){
-      plot_is_empty <<- TRUE
-    } else{
-      plot_is_empty <<- FALSE
-    }
   })
   
   output$console <- renderPrint({
@@ -238,14 +251,23 @@ server <- function(input, output, session) {
     dat <- reflim_data()
     
     if(input$check_target == FALSE && input$check_targetvalues == FALSE){
-      reflim_text <- reflim(dat[,4], plot.it = FALSE)
+      reflim_text <- reflim(dat[,4], n.min = input$nmin, plot.it = FALSE)
     }
     
     if(input$check_target){
-      validate(need(input$target_low < input$target_upper, 
+      validate(need(input$target_low < input$target_upper,
                     "(reflim) the upper target limit must be greater than the lower target limit."))
       
-      reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), plot.it = FALSE)
+      validate(need(input$target_low > 0, 
+                    "(reflim) the lower target limit must be greater than 0."))
+      
+      validate(need(input$target_upper > 0, 
+                    "(reflim) the upper target limit must be greater than 0."))
+      
+      validate(need(input$target_low > 0 && input$target_upper > 0, 
+                    "(reflim) the lower and upper target limit must be greater than 0."))
+      
+      reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), n.min = input$nmin, plot.it = FALSE)
     }
     
     if(input$check_targetvalues){
@@ -264,19 +286,10 @@ server <- function(input, output, session) {
         targetvalues_low <- targets_values[, 3]
         targetvalues_upper <- targets_values[, 4]
       }
-      reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), plot.it = FALSE)
+      reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.it = FALSE)
     }
     
     print(reflim_text)
-  })
-  
-  output$messageOutput <- renderPrint({
-    
-    dat <- reflim_data()
-    
-    if (plot_is_empty) {
-      "(reflim) n or n.trunc is too small where a minimum of 200 is required! Try another example!"
-    }
   })
 }
 ####################################### Run the application #######################################
