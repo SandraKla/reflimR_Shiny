@@ -5,7 +5,7 @@
 ![](https://img.shields.io/github/license/SandraKla/reflimR_Shiny.svg)
 ![](https://img.shields.io/github/last-commit/SandraKla/reflimR_Shiny.svg)
 
-This Shiny App is based on the package **reflimR** for the estimation of reference limits from routine laboratory results.
+This Shiny App is based on the package [**reflimR**]("https://github.com/reflim/reflimR) for the estimation of reference limits from routine laboratory results.
 
 ## Installation 
 
@@ -36,24 +36,24 @@ runApp("app.R")
 
 <img src="www/shiny.png" align="center"/>
 
-The package [reflimR](https://github.com/reflim/reflimR) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.1.2 (2021-11-01).
+The package [reflimR](https://github.com/reflim/reflimR) (≥ 1.0), [DT](https://cran.r-project.org/web/packages/DT/index.html) (≥ 0.28) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.1.2 (2021-11-01).
 
-### Preloaded dataset
+## Preloaded dataset
 Data from the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HCV+data) showing *livertests* has been preloaded into this Shiny App. In addition, the corresponding reference intervals are stored in *targetvalues*. The reference interval table has been derived from the data published in the [Clinical Laboratory Diagnostics](https://www.clinical-laboratory-diagnostics.com) by Lothar Thomas, MD. 
 
-<!--- 
-### New data
+## New data
 These columns should be used for new data:
 
-* **Category**: Name of the category ("reference") 
+* **Category**: Name of the category
 * **Age**: Age in years
 * **Sex**: "m" for male and "f" for female
 * **Value**: Column name is the analyte name, values are the laboratory measures
--->
+
+The data from *livertests* serves as a template. The data must be saved in csv format.The reading is done with ```read.csv2()```.
 
 ## Usage
 
-On the left side, you can use the sidebar to choose the lab parameters and gender. Below in the "Target Values" section, you can load the data from *targetvalues* or enter your own values. By clicking on "View all plots", all the plots from the different steps can be displayed. In the main panel, you will see the corresponding plot and the console's output.
+On the left side, you can use the sidebar to choose the lab parameters and gender. Below in the "Target Values" section, you can load the data from *targetvalues* or enter your own values. By clicking on "View all plots", all the plots from the different steps can be displayed. In the main panel, you will see the corresponding plot and the outputs.
 
 ## Contact
 
