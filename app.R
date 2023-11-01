@@ -2,6 +2,21 @@
 ####################################### from Sandra K. (2023) #####################################
 ###################################################################################################
 
+# Get template for the dataset
+# data <- reflimR::livertests
+# 
+# write.csv(data, "reflim_csv.csv", row.names = FALSE)
+# write.csv2(data, "reflim_csv2.csv", row.names = FALSE)
+# write_xlsx(data, "reflim_excel.xlsx")
+# 
+# dataset_original1 <- read.csv("reflim_csv.csv")
+# dataset_original2 <- read.csv2("reflim_csv2.csv")
+# dataset_original3 <- read_excel("reflim_excel.xlsx")
+# 
+# write.csv2(dataset_original1, "reflim_data1.csv", row.names = FALSE)
+# write.csv2(dataset_original2, "reflim_data2.csv", row.names = FALSE)
+# write.csv2(dataset_original3, "reflim_data3.csv", row.names = FALSE)
+
 ####################################### Libraries #################################################
 
 if("DT" %in% rownames(installed.packages())){
@@ -66,9 +81,7 @@ ui <- dashboardPage(
       
       hr(),
       
-      div(style = "text-align:center", "Target values"),
-      
-      checkboxInput("check_targetvalues", "Load *targetvalues*", value = FALSE),
+      checkboxInput("check_targetvalues", "Load preinstalled target values", value = FALSE),
       checkboxInput("check_target", "Own target values", value = FALSE),
       
       conditionalPanel(
@@ -208,7 +221,7 @@ server <- function(input, output, session) {
   
   output$dataset_file <- renderUI({
     input$reset ## Create a dependency with the reset button
-    fileInput('dataset_file1', label = NULL)
+    fileInput('dataset_file1', label = NULL,  multiple = FALSE)
   })
   
   output$parameters <- renderUI({
@@ -216,6 +229,7 @@ server <- function(input, output, session) {
       choices <- colnames(dataset_original)[4:length(colnames(dataset_original))]
       } 
     else{
+      validate(need(endsWith(dataset_input()[["datapath"]], ".csv"), "Check if you have used the correct template!"))
       choices <- colnames(read.csv2(dataset_input()[["datapath"]]))[4:length(colnames(read.csv2(dataset_input()[["datapath"]])))]
     }
     selectInput("parameter","Select preinstalled dataset:", choices = choices, selected = TRUE)
@@ -272,8 +286,12 @@ server <- function(input, output, session) {
       column_number <- which(names(dataset_original) == input$parameter)
       dataset_original <- dataset_original[c(1,2,3,column_number)]
     } else{
+      
+      validate(need(endsWith(dataset_input()[["datapath"]], ".csv"), "Check if you have used the correct template!"))
       dataset_original <- read.csv2(dataset_input()[["datapath"]])
       
+      validate(need(nrow(dataset_original) >= 0, "Check if you have used the correct template!"))
+
       column_number <- which(names(dataset_original) == input$parameter)
       dataset_original <- dataset_original[c(1,2,3,column_number)]
       dataset_original[,4] <- as.numeric(dataset_original[,4])
@@ -575,8 +593,8 @@ server <- function(input, output, session) {
                                 check.names = FALSE))
       colnames(table_report) <- c("Report")
     
-      DT::datatable(table_report, extensions = 'Buttons', caption = htmltools::tags$caption(style = 'caption-side: bottom; text-align: center;','Dataset'),
-                    options = list(dom = 'Blfrtip', pageLength = 16, buttons = c('copy', 'csv', 'pdf', 'print')))
+      DT::datatable(table_report, extensions = 'Buttons',
+                    options = list(dom = 'Bt', pageLength = 16, buttons = c('copy', 'csv', 'pdf', 'print')))
     }
   })
 }

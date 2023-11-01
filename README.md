@@ -49,7 +49,7 @@ These columns should be used for new data:
 * **Sex**: "m" for male and "f" for female
 * **Value**: Column name is the analyte name, values are the laboratory measures
 
-The data from *livertests* serves as a template. The data must be saved in csv format.The reading is done with ```read.csv2()```.
+The data from *livertests* serves as a template. The data must be saved in csv format. To load new data, the data should be in CSV format with values separated by semicolons (;), and decimal numbers should use a comma (,) as the decimal separator. The first row of the CSV file should contain column headers.
 
 ## Usage
 
