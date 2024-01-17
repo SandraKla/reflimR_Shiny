@@ -5,7 +5,7 @@
 ![](https://img.shields.io/github/license/SandraKla/reflimR_Shiny.svg)
 ![](https://img.shields.io/github/last-commit/SandraKla/reflimR_Shiny.svg)
 
-This Shiny App is based on the package [**reflimR**]("https://github.com/reflim/reflimR) for the estimation of reference limits from routine laboratory results.
+This Shiny App is based on the package [**reflimR**](https://cran.r-project.org/web/packages/reflimR/index.html) for the estimation of reference limits from routine laboratory results.
 
 ## Installation 
 
@@ -36,7 +36,7 @@ runApp("app.R")
 
 <img src="www/shiny.png" align="center"/>
 
-The package [reflimR](https://github.com/reflim/reflimR) (≥ 1.0), [DT](https://cran.r-project.org/web/packages/DT/index.html) (≥ 0.28) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.1.2 (2021-11-01).
+The package [reflimR](https://cran.r-project.org/web/packages/reflimR/index.html) (≥ 1.0.6), [DT](https://cran.r-project.org/web/packages/DT/index.html) (≥ 0.28) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.1.2 (2021-11-01).
 
 ## Preloaded dataset
 Data from the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HCV+data) showing *livertests* has been preloaded into this Shiny App. In addition, the corresponding reference intervals are stored in *targetvalues*. The reference interval table has been derived from the data published in the [Clinical Laboratory Diagnostics](https://www.clinical-laboratory-diagnostics.com) by Lothar Thomas, MD. 

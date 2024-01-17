@@ -119,7 +119,7 @@ ui <- dashboardPage(
             solidHeader = TRUE,
             status = "info",
         
-            p("This Shiny App is based on the package", a("reflimR", href = "https://github.com/reflim/reflimR"), "for the estimation of reference limits from routine laboratory results:"),
+            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
             plotOutput("plot", height = "700px")
           )
         ),
@@ -133,7 +133,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                     
-            p("This Shiny App is based on the package", a("reflimR", href = "https://github.com/reflim/reflimR"), "for the estimation of reference limits from routine laboratory results:"),
+            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
             DT::dataTableOutput("table", height = "700px")
           )
         ),
@@ -147,7 +147,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                    
-            p("This Shiny App is based on the package", a("reflimR", href = "https://github.com/reflim/reflimR"), "for the estimation of reference limits from routine laboratory results:"),
+            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
             plotOutput("scatterplot", height = "700px")
           )
         ),
@@ -161,7 +161,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
       
-            p("This Shiny App is based on the package", a("reflimR", href = "https://github.com/reflim/reflimR"), "for the estimation of reference limits from routine laboratory results:"),
+            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
             plotOutput("plot_statistics", height = "700px")
           )
         )
@@ -281,7 +281,7 @@ server <- function(input, output, session) {
     input$age_end
     
     if(is.null(dataset_input())){
-      dataset_original <- reflimR::livertests
+      dataset_original <- livertests
       
       column_number <- which(names(dataset_original) == input$parameter)
       dataset_original <- dataset_original[c(1,2,3,column_number)]
@@ -451,68 +451,20 @@ server <- function(input, output, session) {
     }
     
     if(!(nrow(dat)) == 0){
-      boxplot(dat[,4]~interaction(dat[,3], dat[,2]), xlab = "Age", 
-              ylab = ylab_, col = c("indianred", "cornflowerblue"), las = 2)
+
+      if (input$sex == "m") {
+        boxplot(dat[,4]~interaction(dat[,3], dat[,2]), xlab = "Age", 
+                ylab = ylab_, col = "cornflowerblue", las = 2)
+      }
+      else if (input$sex == "f") {
+        boxplot(dat[,4]~interaction(dat[,3], dat[,2]), xlab = "Age", 
+                ylab = ylab_, col = "indianred", las = 2)
+      } else{
+        boxplot(dat[,4]~interaction(dat[,3], dat[,2]), xlab = "Age", 
+                ylab = ylab_, col = c("indianred", "cornflowerblue"), las = 2)
+      }
     }
-  
   })
-  
-  # output$console <- renderPrint({
-  # 
-  #   input$nmin
-  #   input$sex
-  #   input$parameter
-  #   input$check_plot.all
-  #   input$check_targetvalues
-  #   input$check_target
-  #   input$dataset_file
-  #   input$age_end
-  #   
-  #   dat <- reflim_data()
-  #   validate(need(nrow(dat) > 39,
-  #                 "(reflim) n = 0. The absolute minimum for reference limit estimation is 40."))
-  #   
-  #   if(input$check_target == FALSE && input$check_targetvalues == FALSE){
-  #     reflim_text <- reflim(dat[,4], n.min = input$nmin, plot.it = FALSE)
-  #   }
-  #   
-  #   if(input$check_target){
-  #     validate(need(input$target_low < input$target_upper,
-  #                   "(reflim) the upper target limit must be greater than the lower target limit."))
-  #     
-  #     validate(need(input$target_low > 0, 
-  #                   "(reflim) the lower target limit must be greater than 0."))
-  #     
-  #     validate(need(input$target_upper > 0, 
-  #                   "(reflim) the upper target limit must be greater than 0."))
-  #     
-  #     validate(need(input$target_low > 0 && input$target_upper > 0, 
-  #                   "(reflim) the lower and upper target limit must be greater than 0."))
-  #     
-  #     reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), n.min = input$nmin, plot.it = FALSE)
-  #   }
-  #   
-  #   if(input$check_targetvalues){
-  #     
-  #     validate(need(input$sex != "t", 
-  #                   "(reflim) The reference intervals are sex-specific. Please select a sex."))
-  #     
-  #     targets <- reflimR::targetvalues
-  #     targets_values <- targets[targets$analyte == input$parameter, ]
-  #     
-  #     if (input$sex == "m") {
-  #       targetvalues_low <-  targets_values[, 5]
-  #       targetvalues_upper <- targets_values[, 6]
-  #     }
-  #     if (input$sex == "f") {
-  #       targetvalues_low <- targets_values[, 3]
-  #       targetvalues_upper <- targets_values[, 4]
-  #     }
-  #     reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.it = FALSE)
-  #   }
-  #   
-  #   print(reflim_text)
-  # })
   
   output$table_report <- DT::renderDataTable({
     
@@ -530,7 +482,7 @@ server <- function(input, output, session) {
                   "(reflim) n = 0. The absolute minimum for reference limit estimation is 40."))
     
     if(input$check_target == FALSE && input$check_targetvalues == FALSE){
-      reflim_text <- reflim(dat[,4], n.min = input$nmin, plot.it = FALSE)
+      reflim_text <- reflim(dat[,4], n.min = input$nmin, plot.all = FALSE)
     }
     
     if(input$check_target){
@@ -546,7 +498,7 @@ server <- function(input, output, session) {
       validate(need(input$target_low > 0 && input$target_upper > 0, 
                     "(reflim) the lower and upper target limit must be greater than 0."))
       
-      reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), n.min = input$nmin, plot.it = FALSE)
+      reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), n.min = input$nmin, plot.all = FALSE)
     }
     
     if(input$check_targetvalues){
@@ -569,7 +521,7 @@ server <- function(input, output, session) {
       validate(need(nrow(targets_values) > 0, 
                      "(reflim) There are no preloaded target values for this parameter!"))
       
-      reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.it = FALSE)
+      reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.all = FALSE)
     }
     report <- reflim_text
     
@@ -587,7 +539,6 @@ server <- function(input, output, session) {
                                 "Upper targer tolerance intervals:" = paste0(report$targets[5], " - " , report$targets[6]),
                                 "Lower confidence intervals:" = paste0(report$confidence.int[1], " - " , report$confidence.int[2]),
                                 "Upper confidence intervals:" = paste0(report$confidence.int[3], " - " , report$confidence.int[4]),
-                                "n:" = report$confidence.int[5],
                                 "Interpretation of the lower limit:" = report$interpretation[1],
                                 "Interpretation of the upper limit:" = report$interpretation[2],
                                 check.names = FALSE))
