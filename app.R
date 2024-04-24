@@ -536,7 +536,7 @@ server <- function(input, output, session) {
                                 "Lower target Limit:" = report$targets[1],
                                 "Upper target Limit:" = report$targets[2],
                                 "Lower target tolerance intervals:" = paste0(report$targets[3], " - " , report$targets[4]),
-                                "Upper targer tolerance intervals:" = paste0(report$targets[5], " - " , report$targets[6]),
+                                "Upper target tolerance intervals:" = paste0(report$targets[5], " - " , report$targets[6]),
                                 "Lower confidence intervals:" = paste0(report$confidence.int[1], " - " , report$confidence.int[2]),
                                 "Upper confidence intervals:" = paste0(report$confidence.int[3], " - " , report$confidence.int[4]),
                                 "Interpretation of the lower limit:" = report$interpretation[1],
