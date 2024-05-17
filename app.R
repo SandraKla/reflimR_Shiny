@@ -17,6 +17,10 @@
 # write.csv2(dataset_original2, "reflim_data2.csv", row.names = FALSE)
 # write.csv2(dataset_original3, "reflim_data3.csv", row.names = FALSE)
 
+####################################### Load Script and Example-Dataset ###########################
+
+source("zlog.R")
+
 ####################################### Libraries #################################################
 
 if("DT" %in% rownames(installed.packages())){
@@ -137,7 +141,7 @@ ui <- dashboardPage(
             DT::dataTableOutput("table", height = "700px")
           )
         ),
-        
+      
         tabPanel("Scatterplot", 
           icon = icon("chart-line"),
                  
@@ -164,6 +168,20 @@ ui <- dashboardPage(
             p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
             plotOutput("plot_statistics", height = "700px")
           )
+        ),
+        
+        tabPanel( "zlog", 
+                  icon = icon("table"),
+                  
+                  box(
+                    title = "",
+                    status = "info",
+                    width = 7,
+                    solidHeader = TRUE,
+                    
+                    p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+                    DT::dataTableOutput("table_zlog")
+                  )
         )
       ),
       
@@ -303,15 +321,6 @@ server <- function(input, output, session) {
   # Create the table with the zlog values as reactive expression 
   reflim_data <- reactive({
     
-    input$nmin
-    input$sex
-    input$parameter
-    input$check_plot.all
-    input$check_targetvalues
-    input$check_target
-    input$dataset_file
-    input$age_end
-    
     dat <- get_data_file()
 
     validate(need(ncol(dat) == 4, "Check if you have used the correct template!"))
@@ -325,20 +334,64 @@ server <- function(input, output, session) {
     if(input$sex == "f"){dat <- datf}
     
     return(dat)
- })
+  })
 
+  get_data_report <- reactive({
+    
+    dat <- reflim_data()
+    validate(need(nrow(dat) > 39,
+                  "(reflim) n = 0. The absolute minimum for reference limit estimation is 40."))
+    
+    if(input$check_target == FALSE && input$check_targetvalues == FALSE){
+      reflim_text <- reflim(dat[,4], n.min = input$nmin, plot.all = FALSE)
+    }
+    
+    if(input$check_target){
+      validate(need(input$target_low < input$target_upper,
+                    "(reflim) the upper target limit must be greater than the lower target limit."))
+      
+      validate(need(input$target_low > 0, 
+                    "(reflim) the lower target limit must be greater than 0."))
+      
+      validate(need(input$target_upper > 0, 
+                    "(reflim) the upper target limit must be greater than 0."))
+      
+      validate(need(input$target_low > 0 && input$target_upper > 0, 
+                    "(reflim) the lower and upper target limit must be greater than 0."))
+      
+      reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), n.min = input$nmin, plot.all = FALSE)
+    }
+    
+    if(input$check_targetvalues){
+      
+      validate(need(input$sex != "t", 
+                    "(reflim) The reference intervals are sex-specific. Please select a sex."))
+      
+      targets <- reflimR::targetvalues
+      targets_values <- targets[targets$analyte == input$parameter, ]
+      
+      if (input$sex == "m") {
+        targetvalues_low <-  targets_values[, 5]
+        targetvalues_upper <- targets_values[, 6]
+      }
+      if (input$sex == "f") {
+        targetvalues_low <- targets_values[, 3]
+        targetvalues_upper <- targets_values[, 4]
+      }
+      
+      validate(need(nrow(targets_values) > 0, 
+                    "(reflim) There are no preloaded target values for this parameter!"))
+      
+      reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.all = FALSE)
+    }
+    report <- reflim_text
+    
+    return(report)
+  })
+  
   ##################################### Output ####################################################
   
   output$plot <- renderPlot({
-    
-    input$nmin
-    input$sex
-    input$parameter
-    input$check_plot.all
-    input$check_targetvalues
-    input$check_target
-    input$dataset_file
-    input$age_end
     
     dat <- reflim_data()
     validate(need(nrow(dat) > 39,
@@ -395,17 +448,7 @@ server <- function(input, output, session) {
     reflim_result
   })
   
-  
   output$scatterplot <- renderPlot({
-    
-    input$nmin
-    input$sex
-    input$parameter
-    input$check_plot.all
-    input$check_targetvalues
-    input$check_target
-    input$dataset_file
-    input$age_end
     
     dat <- reflim_data()
     
@@ -414,20 +457,12 @@ server <- function(input, output, session) {
   })
   
   output$table <- DT::renderDataTable({
+    
     DT::datatable(reflim_data(), extensions = 'Buttons', caption = htmltools::tags$caption(style = 'caption-side: bottom; text-align: center;','Dataset'),
                   options = list(dom = 'Blfrtip', pageLength = 15, buttons = c('copy', 'csv', 'pdf', 'print')))
   })
   
   output$plot_statistics <- renderPlot({
-    
-    input$nmin
-    input$sex
-    input$parameter
-    input$check_plot.all
-    input$check_targetvalues
-    input$check_target
-    input$dataset_file
-    input$age_end
     
     par(mfrow=c(2,1))
     
@@ -468,62 +503,7 @@ server <- function(input, output, session) {
   
   output$table_report <- DT::renderDataTable({
     
-    input$nmin
-    input$sex
-    input$parameter
-    input$check_plot.all
-    input$check_targetvalues
-    input$check_target
-    input$dataset_file
-    input$age_end
-    
-    dat <- reflim_data()
-    validate(need(nrow(dat) > 39,
-                  "(reflim) n = 0. The absolute minimum for reference limit estimation is 40."))
-    
-    if(input$check_target == FALSE && input$check_targetvalues == FALSE){
-      reflim_text <- reflim(dat[,4], n.min = input$nmin, plot.all = FALSE)
-    }
-    
-    if(input$check_target){
-      validate(need(input$target_low < input$target_upper,
-                    "(reflim) the upper target limit must be greater than the lower target limit."))
-      
-      validate(need(input$target_low > 0, 
-                    "(reflim) the lower target limit must be greater than 0."))
-      
-      validate(need(input$target_upper > 0, 
-                    "(reflim) the upper target limit must be greater than 0."))
-      
-      validate(need(input$target_low > 0 && input$target_upper > 0, 
-                    "(reflim) the lower and upper target limit must be greater than 0."))
-      
-      reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), n.min = input$nmin, plot.all = FALSE)
-    }
-    
-    if(input$check_targetvalues){
-      
-      validate(need(input$sex != "t", 
-                    "(reflim) The reference intervals are sex-specific. Please select a sex."))
-      
-      targets <- reflimR::targetvalues
-      targets_values <- targets[targets$analyte == input$parameter, ]
-      
-      if (input$sex == "m") {
-        targetvalues_low <-  targets_values[, 5]
-        targetvalues_upper <- targets_values[, 6]
-      }
-      if (input$sex == "f") {
-        targetvalues_low <- targets_values[, 3]
-        targetvalues_upper <- targets_values[, 4]
-      }
-      
-      validate(need(nrow(targets_values) > 0, 
-                     "(reflim) There are no preloaded target values for this parameter!"))
-      
-      reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.all = FALSE)
-    }
-    report <- reflim_text
+    report <- get_data_report()
     
     if(!is.null(report$limits)){
       table_report <- t(data.frame("Mean:" = report$stats[1],
@@ -547,6 +527,32 @@ server <- function(input, output, session) {
       DT::datatable(table_report, extensions = 'Buttons',
                     options = list(dom = 'Bt', pageLength = 16, buttons = c('copy', 'csv', 'pdf', 'print')))
     }
+  })
+  
+  output$table_zlog <- DT::renderDataTable({
+    
+    dat <- reflim_data()
+    report <- get_data_report()
+    
+    zlog_results <- numeric(nrow(dat))
+    for (i in 1:nrow(dat)) {
+      zlog_results[i] <- round_df(zlog(dat[i, 4], report$limits[1], report$limits[2]), 2)
+    }
+  
+    reflim_data <- cbind(dat, "RI" = paste0(report$limits[1], " - " , report$limits[2]), "zlog" = zlog_results)
+
+    options(htmlwidgets.TOJSON_ARGS = list(na = 'string'))
+    
+    DT::datatable(reflim_data, rownames= FALSE, extensions = 'Buttons',
+                  options = list(dom = 'Blfrtip', pageLength = 15, buttons = c('copy', 'csv', 'pdf', 'print')),
+                  caption = htmltools::tags$caption(style = 'caption-side: bottom; text-align: center;',
+                                                    'Table: Dataset with the zlog values')) %>%
+    DT::formatStyle(columns = "zlog", 
+                    color = styleEqual(reflim_data[,6], highzlogvalues(c(reflim_data[,6]))),
+                    backgroundColor = styleEqual(reflim_data[,6], zlogcolor(c(reflim_data[,6])))) %>%
+    DT::formatStyle(columns = colnames(reflim_data)[4], 
+                    color = styleEqual(reflim_data[,4], highzlogvalues(c(reflim_data[,6]))),
+                    backgroundColor = styleEqual(reflim_data[,4], zlogcolor(c(reflim_data[,6]))))
   })
 }
 ####################################### Run the application #######################################

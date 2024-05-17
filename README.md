@@ -55,6 +55,12 @@ The data from *livertests* serves as a template. The data must be saved in csv f
 
 On the left side, you can use the sidebar to choose the lab parameters and gender. Below in the "Target Values" section, you can load the data from *targetvalues* or enter your own values. By clicking on "View all plots", all the plots from the different steps can be displayed. In the main panel, you will see the corresponding plot and the outputs.
 
+zlog values are calculated from the dataset and the calculated reference intervals under the "zlog" tab. The lower reference limits (LL) and upper reference limits (UL) can transform any result x into a zlog value using the following equation: 
+
+zlog(x) = (log(x)–(log(LL)+ log(UL))/2)*3.92/(log(UL)–log(LL))
+
+Values ranging from –1.96 to 1.96 are considered normal, while values below –5 and above 5 indicate pathological conditions.
+
 ## Contact
 
 You are welcome to:
