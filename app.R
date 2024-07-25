@@ -2,7 +2,10 @@
 ####################################### from Sandra K. (2023) #####################################
 ###################################################################################################
 
-# Get template for the dataset
+# #Get template for the dataset
+# library(writexl)
+# library(readxl)
+# 
 # data <- reflimR::livertests
 # 
 # write.csv(data, "reflim_csv.csv", row.names = FALSE)
@@ -33,6 +36,11 @@ if("reflimR" %in% rownames(installed.packages())){
     install.packages("reflimR")
     library(reflimR)}
 
+if("rhandsontable" %in% rownames(installed.packages())){
+  library(rhandsontable)} else{
+    install.packages("rhandsontable")
+    library(rhandsontable)}
+
 if("shinydashboard" %in% rownames(installed.packages())){
   library(shinydashboard)} else{
     install.packages("shinydashboard")
@@ -55,10 +63,6 @@ ui <- dashboardPage(
         "Estimation of reference limits", br(),
         "from routine laboratory results", hr()
       ),
-      
-      uiOutput("dataset_file"),
-      uiOutput("parameters"),
-      actionButton('reset', 'Reset Input', icon = icon("trash")),
       
       selectInput(
         "sex",
@@ -114,6 +118,47 @@ ui <- dashboardPage(
     fluidRow(
       
       tabsetPanel( 
+        tabPanel("Upload", 
+          icon = icon("upload"),
+                 
+          box(
+            title = "",
+            status = "info",
+            width = 7,
+            solidHeader = TRUE,
+                   
+            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+            
+            uiOutput("dataset_file"),
+            uiOutput("parameters"),
+            actionButton('reset', 'Reset Input', icon = icon("trash")), hr(),
+            
+            fluidRow(
+              column(6, checkboxInput("show_table", "Show Editable Table for Upload", value = FALSE)),
+              column(6, actionButton("submit", "Submit"))
+            ),
+            conditionalPanel(
+              condition = "input.show_table == true",
+              rHandsontableOutput("editable_table")
+            )
+          ),
+        ),
+        
+        tabPanel("Data", 
+          icon = icon("table"),
+
+          box(
+            title = "",
+            status = "info",
+            width = 7,
+            solidHeader = TRUE,
+                   
+            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+                   
+            DT::dataTableOutput("table", height = "700px")
+           )
+        ),
+        
         tabPanel("reflimR", 
           icon = icon("chart-line"), 
       
@@ -125,20 +170,6 @@ ui <- dashboardPage(
         
             p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
             plotOutput("plot", height = "700px")
-          )
-        ),
-       
-        tabPanel("Data", 
-          icon = icon("table"),
-                  
-          box(
-            title = "",
-            status = "info",
-            width = 7,
-            solidHeader = TRUE,
-                    
-            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
-            DT::dataTableOutput("table", height = "700px")
           )
         ),
       
@@ -171,18 +202,18 @@ ui <- dashboardPage(
         ),
         
         tabPanel( "zlog", 
-                  icon = icon("table"),
+          icon = icon("table"),
                   
-                  box(
-                    title = "",
-                    status = "info",
-                    width = 7,
-                    solidHeader = TRUE,
+          box(
+            title = "",
+            status = "info",
+            width = 7,
+            solidHeader = TRUE,
                     
-                    p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
-                    DT::dataTableOutput("table_zlog")
-                  )
-        )
+            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+            DT::dataTableOutput("table_zlog")
+          )
+        ),
       ),
       
       box(
@@ -285,6 +316,28 @@ server <- function(input, output, session) {
     updateCheckboxInput(session, "check_target", value = reactive_values$check_target)
   })
   
+  observeEvent(input$submit, {
+    if (!is.null(input$editable_table)) { data_store(hot_to_r(input$editable_table))}
+  })
+  
+  initial_data <- data.frame(
+    Category = character(50),
+    Age = numeric(50),
+    Sex = character(50),
+    Analyte = numeric(50),
+    stringsAsFactors = FALSE
+  )
+  
+  data_store <- reactiveVal(initial_data)
+
+  observeEvent(input$show_table, {
+    if (input$show_table) {
+      output$editable_table <- renderRHandsontable({
+        rhandsontable(data_store(), rowHeaders = NULL, colHeaders = colnames(data_store()))
+      })
+    }
+  }, ignoreNULL = FALSE)
+  
   ##################################### Reactive Expressions ######################################
   
   get_data_file <- reactive({
@@ -298,23 +351,33 @@ server <- function(input, output, session) {
     input$dataset_file
     input$age_end
     
-    if(is.null(dataset_input())){
-      dataset_original <- livertests
-      
-      column_number <- which(names(dataset_original) == input$parameter)
-      dataset_original <- dataset_original[c(1,2,3,column_number)]
+    if(input$show_table && input$submit) {
+      dataset_original <- data_store()
     } else{
-      
-      validate(need(endsWith(dataset_input()[["datapath"]], ".csv"), "Check if you have used the correct template!"))
-      dataset_original <- read.csv2(dataset_input()[["datapath"]])
-      
-      validate(need(nrow(dataset_original) >= 0, "Check if you have used the correct template!"))
-
-      column_number <- which(names(dataset_original) == input$parameter)
-      dataset_original <- dataset_original[c(1,2,3,column_number)]
-      dataset_original[,4] <- as.numeric(dataset_original[,4])
+      if (is.null(dataset_input())) {
+        dataset_original <- livertests
+        
+        column_number <-
+          which(names(dataset_original) == input$parameter)
+        dataset_original <- dataset_original[c(1, 2, 3, column_number)]
+      } else{
+        validate(need(
+          endsWith(dataset_input()[["datapath"]], ".csv"),
+          "Check if you have used the correct template!"
+        ))
+        dataset_original <- read.csv2(dataset_input()[["datapath"]])
+        
+        validate(need(
+          nrow(dataset_original) >= 0,
+          "Check if you have used the correct template!"
+        ))
+        
+        column_number <-
+          which(names(dataset_original) == input$parameter)
+        dataset_original <- dataset_original[c(1, 2, 3, column_number)]
+        dataset_original[, 4] <- as.numeric(dataset_original[, 4])
+      }
     }
-
     return(dataset_original)
   })
   
