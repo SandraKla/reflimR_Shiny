@@ -2,7 +2,7 @@
 ####################################### from Sandra K. (2023) #####################################
 ###################################################################################################
 
-# #Get template for the dataset
+# # Get template for the dataset
 # library(writexl)
 # library(readxl)
 # 
@@ -35,11 +35,11 @@ if("reflimR" %in% rownames(installed.packages())){
   library(reflimR)} else{
     install.packages("reflimR")
     library(reflimR)}
-
-if("rhandsontable" %in% rownames(installed.packages())){
-  library(rhandsontable)} else{
-    install.packages("rhandsontable")
-    library(rhandsontable)}
+ 
+# if("rhandsontable" %in% rownames(installed.packages())){
+#   library(rhandsontable)} else{
+#     install.packages("rhandsontable")
+#     library(rhandsontable)}
 
 if("shinydashboard" %in% rownames(installed.packages())){
   library(shinydashboard)} else{
@@ -85,8 +85,6 @@ ui <- dashboardPage(
         max = 1000
       ),
       
-      checkboxInput("check_plot.all", "View all plots"),
-      
       hr(),
       
       checkboxInput("check_targetvalues", "Load preinstalled target values", value = FALSE),
@@ -110,7 +108,8 @@ ui <- dashboardPage(
             min = 0,
             max = 10000
           )
-      )
+      ), 
+      hr()
     )
   ),
   
@@ -131,16 +130,16 @@ ui <- dashboardPage(
             
             uiOutput("dataset_file"),
             uiOutput("parameters"),
-            actionButton('reset', 'Reset Input', icon = icon("trash")), hr(),
+            actionButton('reset', 'Reset Input', icon = icon("trash")), hr()#,
             
-            fluidRow(
-              column(6, checkboxInput("show_table", "Show Editable Table for Upload", value = FALSE)),
-              column(6, actionButton("submit", "Submit"))
-            ),
-            conditionalPanel(
-              condition = "input.show_table == true",
-              rHandsontableOutput("editable_table")
-            )
+            # fluidRow(
+            #   column(6, checkboxInput("show_table", "Show Editable Table for Upload", value = FALSE)),
+            #   column(6, actionButton("submit", "Submit"))
+            # ),
+            # conditionalPanel(
+            #   condition = "input.show_table == true",
+            #   rHandsontableOutput("editable_table")
+            # )
           ),
         ),
         
@@ -169,6 +168,7 @@ ui <- dashboardPage(
             status = "info",
         
             p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+            checkboxInput("check_plot.all", "Visualization of all plots across every process step"),
             plotOutput("plot", height = "700px")
           )
         ),
@@ -316,27 +316,27 @@ server <- function(input, output, session) {
     updateCheckboxInput(session, "check_target", value = reactive_values$check_target)
   })
   
-  observeEvent(input$submit, {
-    if (!is.null(input$editable_table)) { data_store(hot_to_r(input$editable_table))}
-  })
+  # observeEvent(input$submit, {
+  #   if (!is.null(input$editable_table)) { data_store(hot_to_r(input$editable_table))}
+  # })
   
-  initial_data <- data.frame(
-    Category = character(50),
-    Age = numeric(50),
-    Sex = character(50),
-    Analyte = numeric(50),
-    stringsAsFactors = FALSE
-  )
-  
-  data_store <- reactiveVal(initial_data)
+  # initial_data <- data.frame(
+  #   Category = character(50),
+  #   Age = numeric(50),
+  #   Sex = character(50),
+  #   Analyte = numeric(50),
+  #   stringsAsFactors = FALSE
+  # )
+  # 
+  # data_store <- reactiveVal(initial_data)
 
-  observeEvent(input$show_table, {
-    if (input$show_table) {
-      output$editable_table <- renderRHandsontable({
-        rhandsontable(data_store(), rowHeaders = NULL, colHeaders = colnames(data_store()))
-      })
-    }
-  }, ignoreNULL = FALSE)
+  # observeEvent(input$show_table, {
+  #   if (input$show_table) {
+  #     output$editable_table <- renderRHandsontable({
+  #       rhandsontable(data_store(), rowHeaders = NULL, colHeaders = colnames(data_store()))
+  #     })
+  #   }
+  # }, ignoreNULL = FALSE)
   
   ##################################### Reactive Expressions ######################################
   
@@ -351,9 +351,9 @@ server <- function(input, output, session) {
     input$dataset_file
     input$age_end
     
-    if(input$show_table && input$submit) {
-      dataset_original <- data_store()
-    } else{
+    # if(input$show_table && input$submit) {
+    #   dataset_original <- data_store()
+    # } else{
       if (is.null(dataset_input())) {
         dataset_original <- livertests
         
@@ -377,7 +377,7 @@ server <- function(input, output, session) {
         dataset_original <- dataset_original[c(1, 2, 3, column_number)]
         dataset_original[, 4] <- as.numeric(dataset_original[, 4])
       }
-    }
+    #}
     return(dataset_original)
   })
   

@@ -1,13 +1,13 @@
 # Shiny App for reflimR
 
-<img src="www/reflimR.png" width="300px" height="300px" align="right"/>
-
 ![](https://img.shields.io/github/license/SandraKla/reflimR_Shiny.svg)
 ![](https://img.shields.io/github/last-commit/SandraKla/reflimR_Shiny.svg)
 
 This Shiny App is based on the package [**reflimR**](https://cran.r-project.org/web/packages/reflimR/index.html) for the estimation of reference limits from routine laboratory results.
 
 ## Installation 
+
+<img src="www/reflimR.png" width="300px" height="300px" align="right"/>
 
 **Method 1:**
 Use the function ```runGitHub()``` from the package [shiny](https://cran.r-project.org/web/packages/shiny/index.html):
@@ -36,7 +36,7 @@ runApp("app.R")
 
 <img src="www/shiny.png" align="center"/>
 
-The package [reflimR](https://cran.r-project.org/web/packages/reflimR/index.html) (≥ 1.0.6), [rhandsontable](https://cran.r-project.org/web/packages/rhandsontable/index.html), [DT](https://cran.r-project.org/web/packages/DT/index.html) (≥ 0.28) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.1.2 (2021-11-01).
+The package [reflimR](https://cran.r-project.org/web/packages/reflimR/index.html) (≥ 1.0.6), [DT](https://cran.r-project.org/web/packages/DT/index.html) (≥ 0.28) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.1.2 (2021-11-01).
 
 ## Preloaded dataset
 Data from the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HCV+data) showing *livertests* has been preloaded into this Shiny App. In addition, the corresponding reference intervals are stored in *targetvalues*. The reference interval table has been derived from the data published in the [Clinical Laboratory Diagnostics](https://www.clinical-laboratory-diagnostics.com) by Lothar Thomas, MD. 
@@ -49,7 +49,7 @@ These columns should be used for new data:
 * **Sex**: "m" for male and "f" for female
 * **Value**: Column name is the analyte name, values are the laboratory measures
 
-The data from *livertests* serves as a template. The data must be saved in csv format. To load new data, the data should be in CSV format with values separated by semicolons (;), and decimal numbers should use a comma (,) as the decimal separator. The first row of the CSV file should contain column headers.
+The data from *livertests* serves as a [template](https://github.com/SandraKla/reflimR_Shiny/tree/main/www/template.csv). The data must be saved in csv format. To load new data, the data should be in CSV format with values separated by semicolons (;), and decimal numbers should use a comma (,) as the decimal separator. The first row of the CSV file should contain column headers.
 
 ## Usage
 
