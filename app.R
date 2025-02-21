@@ -1,5 +1,5 @@
 ####################################### WELCOME TO THE SHINY APP ##################################
-####################################### from Sandra K. (2023) #####################################
+####################################### from Sandra K. (2025) #####################################
 ###################################################################################################
 
 # # Get template for the dataset
@@ -23,30 +23,30 @@
 ####################################### Load Script and Example-Dataset ###########################
 
 source("zlog.R")
+source("reflimR_loop.R")
 
 ####################################### Libraries #################################################
 
-if("DT" %in% rownames(installed.packages())){
+if ("DT" %in% rownames(installed.packages())) {
   library(DT)} else{
     install.packages("DT")
     library(DT)}
 
-if("reflimR" %in% rownames(installed.packages())){
+if ("reflimR" %in% rownames(installed.packages())) {
   library(reflimR)} else{
     install.packages("reflimR")
     library(reflimR)}
- 
-# if("rhandsontable" %in% rownames(installed.packages())){
-#   library(rhandsontable)} else{
-#     install.packages("rhandsontable")
-#     library(rhandsontable)}
 
-if("shinydashboard" %in% rownames(installed.packages())){
+if ("shinydashboard" %in% rownames(installed.packages())) {
   library(shinydashboard)} else{
     install.packages("shinydashboard")
     library(shinydashboard)}
 
 dataset_original <- reflimR::livertests
+text <- HTML(paste0(
+  "This Shiny App is based on the package ", 
+  a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html")), 
+  " for the estimation of reference limits from routine laboratory results:")
 
 ####################################### User Interface ############################################
 
@@ -63,6 +63,9 @@ ui <- dashboardPage(
         "Estimation of reference limits", br(),
         "from routine laboratory results", hr()
       ),
+      
+      uiOutput("parameters"),
+      uiOutput("category"),
       
       selectInput(
         "sex",
@@ -88,7 +91,7 @@ ui <- dashboardPage(
       hr(),
       
       checkboxInput("check_targetvalues", "Load preinstalled target values", value = FALSE),
-      checkboxInput("check_target", "Own target values", value = FALSE),
+      checkboxInput("check_target", "Load own target values", value = FALSE),
       
       conditionalPanel(
         condition = "input.check_target == true",
@@ -126,11 +129,12 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                    
-            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+            p(text),
             
             uiOutput("dataset_file"),
-            uiOutput("parameters"),
-            actionButton('reset', 'Reset Input', icon = icon("trash")), hr()#,
+            actionButton('reset', 'Reset Input', icon = icon("trash")), hr(),
+            
+            DT::dataTableOutput("table")
             
             # fluidRow(
             #   column(6, checkboxInput("show_table", "Show Editable Table for Upload", value = FALSE)),
@@ -140,22 +144,7 @@ ui <- dashboardPage(
             #   condition = "input.show_table == true",
             #   rHandsontableOutput("editable_table")
             # )
-          ),
-        ),
-        
-        tabPanel("Data", 
-          icon = icon("table"),
-
-          box(
-            title = "",
-            status = "info",
-            width = 7,
-            solidHeader = TRUE,
-                   
-            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
-                   
-            DT::dataTableOutput("table", height = "700px")
-           )
+          )
         ),
         
         tabPanel("reflimR", 
@@ -167,7 +156,7 @@ ui <- dashboardPage(
             solidHeader = TRUE,
             status = "info",
         
-            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+            p(text),
             checkboxInput("check_plot.all", "Visualization of all plots across every process step"),
             plotOutput("plot", height = "700px")
           )
@@ -182,7 +171,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                    
-            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+            p(text),
             plotOutput("scatterplot", height = "700px")
           )
         ),
@@ -196,7 +185,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
       
-            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
+            p(text),
             plotOutput("plot_statistics", height = "700px")
           )
         ),
@@ -210,10 +199,10 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                     
-            p("This Shiny App is based on the package", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), "for the estimation of reference limits from routine laboratory results:"),
-            DT::dataTableOutput("table_zlog")
+            p(text),
+            DT::dataTableOutput("table_zlog",  height = "700px")
           )
-        ),
+        )
       ),
       
       box(
@@ -222,8 +211,10 @@ ui <- dashboardPage(
         width = 5,
         solidHeader = TRUE,
         
-        DT::dataTableOutput("table_report")
-      ),
+        DT::dataTableOutput("table_report"), br(), hr(),
+        downloadButton("download_ritable", "Download all Reference Intervals"),
+        downloadButton("download_zlogtable", "Download all zlog values"),
+      )
       
       # box(
       #   title = tagList(shiny::icon("chart-bar"), "Console"),
@@ -242,6 +233,8 @@ ui <- dashboardPage(
 ####################################### Server ####################################################
 
 server <- function(input, output, session) {
+  
+  ##################################### Observe Events ############################################
   
   options(shiny.sanitize.errors = TRUE)
   options(warn = -1)
@@ -274,15 +267,27 @@ server <- function(input, output, session) {
   })
   
   output$parameters <- renderUI({
-    if(is.null(dataset_input())){ 
+    if (is.null(dataset_input())) { 
       choices <- colnames(dataset_original)[4:length(colnames(dataset_original))]
       } 
     else{
-      validate(need(endsWith(dataset_input()[["datapath"]], ".csv"), "Check if you have used the correct template!"))
+      validate(need(endsWith(dataset_input()[["datapath"]], ".csv"), "Check if you have used the correct template! It must be an CSV file!"))
       choices <- colnames(read.csv2(dataset_input()[["datapath"]]))[4:length(colnames(read.csv2(dataset_input()[["datapath"]])))]
     }
-    selectInput("parameter","Select preinstalled dataset:", choices = choices, selected = TRUE)
-  })      
+    selectInput("parameter","Select laboratory value:", choices = choices, selected = TRUE)
+  })   
+  
+  output$category <- renderUI({
+    if (is.null(dataset_input())) { 
+      choices <- unique(dataset_original[1])[[1]]
+    } 
+    else{
+      validate(need(endsWith(dataset_input()[["datapath"]], ".csv"), "Check if you have used the correct template! It must be an CSV file!"))
+      choices <- unique(read.csv2(dataset_input()[["datapath"]])[1])[[1]]
+    }
+    choices <- c("Not selected", choices)
+    selectInput("category", "Select category:", choices = choices, selected = "Not selected")
+  })
   
   # Create a reactive values to track the state of the checkboxes
   reactive_values <- reactiveValues(
@@ -340,11 +345,13 @@ server <- function(input, output, session) {
   
   ##################################### Reactive Expressions ######################################
   
-  get_data_file <- reactive({
+  # Create the table with the dataset as reactive expression 
+  reflim_data <- reactive({
     
     input$nmin
     input$sex
     input$parameter
+    input$category
     input$check_plot.all
     input$check_targetvalues
     input$check_target
@@ -354,62 +361,101 @@ server <- function(input, output, session) {
     # if(input$show_table && input$submit) {
     #   dataset_original <- data_store()
     # } else{
-      if (is.null(dataset_input())) {
-        dataset_original <- livertests
-        
-        column_number <-
-          which(names(dataset_original) == input$parameter)
-        dataset_original <- dataset_original[c(1, 2, 3, column_number)]
-      } else{
-        validate(need(
-          endsWith(dataset_input()[["datapath"]], ".csv"),
-          "Check if you have used the correct template!"
-        ))
-        dataset_original <- read.csv2(dataset_input()[["datapath"]])
-        
-        validate(need(
-          nrow(dataset_original) >= 0,
-          "Check if you have used the correct template!"
-        ))
-        
-        column_number <-
-          which(names(dataset_original) == input$parameter)
-        dataset_original <- dataset_original[c(1, 2, 3, column_number)]
-        dataset_original[, 4] <- as.numeric(dataset_original[, 4])
-      }
+    if (is.null(dataset_input())) {
+      dataset <- dataset_original
+    } else {
+      validate(need(
+        endsWith(dataset_input()[["datapath"]], ".csv"),
+        "Check if you have used the correct template! It must be a CSV file!"
+      ))
+      
+      dataset <- read.csv2(dataset_input()[["datapath"]])
+      
+      validate(need(
+        nrow(dataset) > 0,
+        "Check if you have used the correct template! The dataset is empty!"
+      ))
+    }
+    
+    column_number <- which(names(dataset) == input$parameter)
+    dataset <- dataset[c(1, 2, 3, column_number)]
+    
+    if (!is.null(input$category) && input$category != "Not selected") {
+      dataset <- subset(dataset, dataset[[1]] == input$category)
+    }
     #}
-    return(dataset_original)
+    
+    validate(need(
+      ncol(dataset) == 4, 
+      "Check if you have used the correct template! You need 4 columns (Category, Age, Sex, Value)!"
+    ))
+    dataset[, 4] <- as.numeric(dataset[, 4])
+    
+    dataset <- subset(dataset, Age >= input$age_end[1] & Age <= input$age_end[2])
+    
+    if (input$sex %in% c("m", "f")) {
+      dataset <- subset(dataset, Sex == input$sex)
+    }
+    
+    return(dataset)
   })
   
-  # Create the table with the zlog values as reactive expression 
-  reflim_data <- reactive({
+  get_alldata_file <- reactive({
     
-    dat <- get_data_file()
-
-    validate(need(ncol(dat) == 4, "Check if you have used the correct template!"))
+    input$nmin
+    input$sex
+    input$parameter
+    input$category
+    input$check_plot.all
+    input$check_targetvalues
+    input$check_target
+    input$dataset_file
+    input$age_end
     
-    dat <- subset(dat,dat$Age >= input$age_end[1] & dat$Age <= input$age_end[2])
+    # if(input$show_table && input$submit) {
+    #   dataset_original <- data_store()
+    # } else{
+    if (is.null(dataset_input())) {
+      dataset <- dataset_original
+    } else {
+      validate(need(
+        endsWith(dataset_input()[["datapath"]], ".csv"),
+        "Check if you have used the correct template! It must be a CSV file!"
+      ))
+      
+      dataset <- read.csv2(dataset_input()[["datapath"]])
+      
+      validate(need(
+        nrow(dataset) > 0,
+        "Check if you have used the correct template! The dataset is empty!"
+      ))
+    }
     
-    datm <- subset(dat,dat$Sex== "m")
-    datf <- subset(dat,dat$Sex== "f")
+    if (!is.null(input$category) && input$category != "Not selected") {
+      dataset <- subset(dataset, dataset[[1]] == input$category)
+    }
+    #}
     
-    if(input$sex == "m"){dat <- datm}
-    if(input$sex == "f"){dat <- datf}
+    dataset <- subset(dataset, Age >= input$age_end[1] & Age <= input$age_end[2])
     
-    return(dat)
+    if (input$sex %in% c("m", "f")) {
+      dataset <- subset(dataset, Sex == input$sex)
+    }
+    
+    return(dataset)
   })
-
+  
   get_data_report <- reactive({
     
     dat <- reflim_data()
     validate(need(nrow(dat) > 39,
                   "(reflim) n = 0. The absolute minimum for reference limit estimation is 40."))
     
-    if(input$check_target == FALSE && input$check_targetvalues == FALSE){
+    if (input$check_target == FALSE && input$check_targetvalues == FALSE) {
       reflim_text <- reflim(dat[,4], n.min = input$nmin, plot.all = FALSE)
     }
     
-    if(input$check_target){
+    if (input$check_target) {
       validate(need(input$target_low < input$target_upper,
                     "(reflim) the upper target limit must be greater than the lower target limit."))
       
@@ -425,7 +471,7 @@ server <- function(input, output, session) {
       reflim_text <- reflim(dat[,4], targets = c(input$target_low, input$target_upper), n.min = input$nmin, plot.all = FALSE)
     }
     
-    if(input$check_targetvalues){
+    if (input$check_targetvalues) {
       
       validate(need(input$sex != "t", 
                     "(reflim) The reference intervals are sex-specific. Please select a sex."))
@@ -514,41 +560,43 @@ server <- function(input, output, session) {
   output$scatterplot <- renderPlot({
     
     dat <- reflim_data()
+    colors <- ifelse(dat[, 3] == "f", "indianred", "cornflowerblue")
+    pchs <- ifelse(dat[, 3] == "f", 17, 19)
+    plot(dat[,4] ~ dat[,2], pch = pchs, cex = 1, col = colors, xlab = "Age", ylab = colnames(dat)[4])
     
-    plot(dat[,4] ~ dat[,2], pch = 20, cex = 1, col = factor(dat[,3]), xlab = "Age", ylab = colnames(dat)[4])
-    legend("topright", legend = levels(factor(dat[,3])), pch = 19, col = factor(levels(factor(dat[,3]))))
+    unique_levels <- levels(factor(dat[, 3]))
+    legend("topright", legend = unique_levels, pch = c(17, 19)[1:length(unique_levels)], col = c("indianred", "cornflowerblue")[1:length(unique_levels)])
   })
   
   output$table <- DT::renderDataTable({
     
-    DT::datatable(reflim_data(), extensions = 'Buttons', caption = htmltools::tags$caption(style = 'caption-side: bottom; text-align: center;','Dataset'),
-                  options = list(dom = 'Blfrtip', pageLength = 15, buttons = c('copy', 'csv', 'pdf', 'print')))
+    DT::datatable(reflim_data(), caption = htmltools::tags$caption(style = 'caption-side: bottom; text-align: center;','Dataset'))
   })
   
   output$plot_statistics <- renderPlot({
     
-    par(mfrow=c(2,1))
+    par(mfrow = c(2,1))
     
     dat <- reflim_data()
     ylab_ <- colnames(dat)[4]
     
-    if(!(nrow(dat)) == 0){
+    if (!(nrow(dat)) == 0) {
       hist_data_w <- subset(dat, Sex == "f", select = Age)
       hist_data_m <- subset(dat, Sex == "m", select = Age)
       
-      hist_w <- hist(hist_data_w$Age, breaks=seq(min(dat[,2])-1,max(dat[,2]),by=1))$counts
-      hist_m <- hist(hist_data_m$Age, breaks=seq(min(dat[,2])-1,max(dat[,2]),by=1))$counts
+      hist_w <- hist(hist_data_w$Age, breaks = seq(min(dat[,2]) - 1,max(dat[,2]),by = 1))$counts
+      hist_m <- hist(hist_data_m$Age, breaks = seq(min(dat[,2]) - 1,max(dat[,2]),by = 1))$counts
       
       barplot(rbind(hist_m,hist_w), col = c("cornflowerblue","indianred"),
-              names.arg=seq(min(dat[,2]), max(dat[,2]), by=1), xlab = "Age", las = 1, beside = TRUE, ylab = "Number of data")
-      abline(h=0)
-      legend("topright", legend = c(paste0("Men: ", nrow(hist_data_m)), paste0("Female: ", nrow(hist_data_w))), col = c("cornflowerblue","indianred"), pch = c(17, 20))
+              names.arg = seq(min(dat[,2]), max(dat[,2]), by = 1), xlab = "Age", las = 1, beside = TRUE, ylab = "Number of data")
+      abline(h = 0)
+      legend("topright", legend = c(paste0("m: ", nrow(hist_data_m)), paste0("f: ", nrow(hist_data_w))), col = c("cornflowerblue","indianred"), pch = c(19, 19))
       
       par(new = TRUE)
       boxplot(dat[,2], horizontal = TRUE, axes = FALSE, col = rgb(0, 0, 0, alpha = 0.15))
     }
     
-    if(!(nrow(dat)) == 0){
+    if (!(nrow(dat)) == 0) {
 
       if (input$sex == "m") {
         boxplot(dat[,4]~interaction(dat[,3], dat[,2]), xlab = "Age", 
@@ -567,17 +615,22 @@ server <- function(input, output, session) {
   output$table_report <- DT::renderDataTable({
     
     report <- get_data_report()
-    
-    if(!is.null(report$limits)){
-      table_report <- t(data.frame("Mean:" = report$stats[1],
+    if (!is.na(report$limits[1])) {
+      converted_sex <- switch(input$sex,
+                              "f" = "Female(F)",
+                              "m" = "Male(M)",
+                              "t" = "Female(F) & Male(M)")
+      
+      table_report <- t(data.frame(
+                                "Sex and Age:" = paste0(converted_sex, " (", input$age_end[1], "-", input$age_end[2], ")"),
+                                "Category:" = input$category,
+                                "Mean:" = report$stats[1],
                                 "Standard deviation:" = report$stats[2],
                                 "Lognormal Distribution:" = report$lognormal,
-                                "Lower limit:" = report$limits[1],
-                                "Upper limit:" = report$limits[2],
+                                "Reference limit:" =  paste0(report$limits[1] , " - " , report$limits[2]),
                                 "Lower tolerance intervals:" = paste0(report$limits[3], " - " , report$limits[4]),
                                 "Upper tolerance intervals:" = paste0(report$limits[5], " - " , report$limits[6]),
-                                "Lower target Limit:" = report$targets[1],
-                                "Upper target Limit:" = report$targets[2],
+                                "Target Limits:" = paste0(report$targets[1], " - " , report$targets[2]),
                                 "Lower target tolerance intervals:" = paste0(report$targets[3], " - " , report$targets[4]),
                                 "Upper target tolerance intervals:" = paste0(report$targets[5], " - " , report$targets[6]),
                                 "Lower confidence intervals:" = paste0(report$confidence.int[1], " - " , report$confidence.int[2]),
@@ -585,10 +638,10 @@ server <- function(input, output, session) {
                                 "Interpretation of the lower limit:" = report$interpretation[1],
                                 "Interpretation of the upper limit:" = report$interpretation[2],
                                 check.names = FALSE))
-      colnames(table_report) <- c("Report")
+      colnames(table_report) <- input$parameter
     
       DT::datatable(table_report, extensions = 'Buttons',
-                    options = list(dom = 'Bt', pageLength = 16, buttons = c('copy', 'csv', 'pdf', 'print')))
+                    options = list(dom = 'Bt', pageLength = 15, buttons = c('copy', 'csv', 'pdf', 'print')))
     }
   })
   
@@ -606,7 +659,7 @@ server <- function(input, output, session) {
 
     options(htmlwidgets.TOJSON_ARGS = list(na = 'string'))
     
-    DT::datatable(reflim_data, rownames= FALSE, extensions = 'Buttons',
+    DT::datatable(reflim_data, rownames = FALSE, extensions = 'Buttons',
                   options = list(dom = 'Blfrtip', pageLength = 15, buttons = c('copy', 'csv', 'pdf', 'print')),
                   caption = htmltools::tags$caption(style = 'caption-side: bottom; text-align: center;',
                                                     'Table: Dataset with the zlog values')) %>%
@@ -617,6 +670,124 @@ server <- function(input, output, session) {
                     color = styleEqual(reflim_data[,4], highzlogvalues(c(reflim_data[,6]))),
                     backgroundColor = styleEqual(reflim_data[,4], zlogcolor(c(reflim_data[,6]))))
   })
+  
+  output$download_ritable <- downloadHandler(
+    filename = function() {
+      paste("ReferenceIntervals_", Sys.Date(), ".zip", sep = "")
+    },
+    content = function(file) {
+      
+      dat <- get_alldata_file()
+      dataset <- dat[c(-1,-2,-3)]
+      reflim.loop.results <- reflim.loop(dataset, plot.it = FALSE)
+      
+      tmpdir <- tempdir()
+      csv_files <- c()
+      
+      for (col in names(reflim.loop.results)) {
+        report <- reflim.loop.results[[col]]
+        
+        converted_sex <- switch(input$sex,
+                                "f" = "Female(F)",
+                                "m" = "Male(M)",
+                                "t" = "Female(F) & Male(M)")
+        
+        df <- t(data.frame(
+          "Sex and Age:" = paste0(converted_sex, " (", input$age_end[1], "-", input$age_end[2], ")"),
+          "Category:" = input$category,
+          "Mean:" = report$stats[1],
+          "Standard deviation:" = report$stats[2],
+          "Lognormal Distribution:" = report$lognormal,
+          "Reference Interval:" = paste0(report$limits[1] , " - " , report$limits[2]),
+          "Lower tolerance intervals:" = paste0(report$limits[3], " - " , report$limits[4]),
+          "Upper tolerance intervals:" = paste0(report$limits[5], " - " , report$limits[6]),
+          "Target Limits:" = paste0(report$targets[1], " - " , report$targets[2]),
+          "Lower target tolerance intervals:" = paste0(report$targets[3], " - " , report$targets[4]),
+          "Upper target tolerance intervals:" = paste0(report$targets[5], " - " , report$targets[6]),
+          "Lower confidence intervals:" = paste0(report$confidence.int[1], " - " , report$confidence.int[2]),
+          "Upper confidence intervals:" = paste0(report$confidence.int[3], " - " , report$confidence.int[4]),
+          "Interpretation of the lower limit:" = report$interpretation[1],
+          "Interpretation of the upper limit:" = report$interpretation[2],
+          check.names = FALSE))
+        
+        csv_path <- file.path(tmpdir, paste0(col, ".csv"))
+        write.csv(df, csv_path)
+        csv_files <- c(csv_files, csv_path)
+      }
+      
+      old_wd <- setwd(tmpdir)
+      on.exit(setwd(old_wd))
+      
+      zip(zipfile = file, files = basename(csv_files), extras = "-j")
+    }
+  )
+  
+    output$download_ritable <- downloadHandler(
+    filename = function() {
+      paste("ReferenceIntervals_", Sys.Date(), ".zip", sep = "")
+    },
+    content = function(file) {
+      
+      dat <- get_alldata_file()
+      dataset <- dat[c(-1,-2,-3)]
+      reflim.loop.results <- reflim.loop(dataset, plot.it = FALSE)
+      
+      tmpdir <- tempdir()
+      csv_files <- c()
+      
+      for (col in names(reflim.loop.results)) {
+        report <- reflim.loop.results[[col]]
+        
+        converted_sex <- switch(input$sex,
+                                "f" = "Female(F)",
+                                "m" = "Male(M)",
+                                "t" = "Female(F) & Male(M)")
+        
+        df <- t(data.frame(
+          "Sex and Age:" = paste0(converted_sex, " (", input$age_end[1], "-", input$age_end[2], ")"),
+          "Category:" = input$category,
+          "Mean:" = report$stats[1],
+          "Standard deviation:" = report$stats[2],
+          "Lognormal Distribution:" = report$lognormal,
+          "Reference Interval:" = paste0(report$limits[1] , " - " , report$limits[2]),
+          "Lower tolerance intervals:" = paste0(report$limits[3], " - " , report$limits[4]),
+          "Upper tolerance intervals:" = paste0(report$limits[5], " - " , report$limits[6]),
+          "Target Limits:" = paste0(report$targets[1], " - " , report$targets[2]),
+          "Lower target tolerance intervals:" = paste0(report$targets[3], " - " , report$targets[4]),
+          "Upper target tolerance intervals:" = paste0(report$targets[5], " - " , report$targets[6]),
+          "Lower confidence intervals:" = paste0(report$confidence.int[1], " - " , report$confidence.int[2]),
+          "Upper confidence intervals:" = paste0(report$confidence.int[3], " - " , report$confidence.int[4]),
+          "Interpretation of the lower limit:" = report$interpretation[1],
+          "Interpretation of the upper limit:" = report$interpretation[2],
+          check.names = FALSE))
+        
+        csv_path <- file.path(tmpdir, paste0(col, ".csv"))
+        write.csv(df, csv_path)
+        csv_files <- c(csv_files, csv_path)
+      }
+      
+      old_wd <- setwd(tmpdir)
+      on.exit(setwd(old_wd))
+      
+      zip(zipfile = file, files = basename(csv_files), extras = "-j")
+    }
+  )
+  
+  output$download_zlogtable <- downloadHandler(
+    filename = function() {
+      paste("zlogValues_", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      dat <- get_alldata_file()
+      
+      dataset <- dat[c(-1,-2,-3)]
+      reflim.loop.results <- reflim.loop(dataset, plot.it = FALSE)
+      zlog.loop.results <- zlog.loop(dataset, reflim.loop.results)
+      
+      result <- c(dat, zlog.loop.results)
+      write.csv(result, file)
+    }
+  )
 }
 ####################################### Run the application #######################################
 shinyApp(ui = ui, server = server)
