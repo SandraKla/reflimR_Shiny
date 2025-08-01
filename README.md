@@ -36,7 +36,7 @@ runApp("app.R")
 
 <img src="www/shiny.png" align="center"/>
 
-The package [reflimR](https://cran.r-project.org/web/packages/reflimR/index.html) (≥ 1.0.6), [DT](https://cran.r-project.org/web/packages/DT/index.html) (≥ 0.33) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.3.2.
+The package [reflimR](https://cran.r-project.org/web/packages/reflimR/index.html) (≥ 1.1.0), [DT](https://cran.r-project.org/web/packages/DT/index.html) (≥ 0.33) and [shinydashboard](https://cran.r-project.org/web/packages/shinydashboard/index.html) (≥ 0.7.2) is downloaded or imported when starting this app. The used [R](https://www.r-project.org)-Version must be ≥ 4.3.2.
 
 ## Preloaded dataset
 Data from the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/HCV+data) showing *livertests* has been preloaded into this Shiny App. In addition, the corresponding reference intervals are stored in *targetvalues*. The reference interval table has been derived from the data published in the [Clinical Laboratory Diagnostics](https://www.clinical-laboratory-diagnostics.com) by Lothar Thomas, MD.
@@ -67,3 +67,5 @@ You are welcome to:
 - Submit suggestions and bugs at: https://github.com/SandraKla/reflimR_Shiny/issues
 - Make a pull request on: https://github.com/SandraKla/reflimR_Shiny/pulls
 - Write an email with any questions and problems to: s.klawitter@ostfalia.de
+
+Link to the publication: [A Novel Tool for the Rapid and Transparent Verification of Reference Intervals in Clinical Laboratories](https://doi.org/10.3390/jcm13154397)
