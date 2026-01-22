@@ -24,6 +24,7 @@
 
 source("zlog.R")
 source("reflimR_loop.R")
+source("mclust.R")
 
 ####################################### Libraries #################################################
 
@@ -31,6 +32,16 @@ if ("DT" %in% rownames(installed.packages())) {
   library(DT)} else{
     install.packages("DT")
     library(DT)}
+
+if ("mclust" %in% rownames(installed.packages())) {
+  library(mclust)} else{
+    install.packages("mclust")
+    library(mclust)}
+
+if ("refineR" %in% rownames(installed.packages())) {
+  library(refineR)} else{
+    install.packages("refineR")
+    library(refineR)}
 
 if ("reflimR" %in% rownames(installed.packages())) {
   library(reflimR)} else{
@@ -47,6 +58,13 @@ text <- HTML(paste0(
   "This Shiny App is based on the package ", 
   a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html")), 
   " for the estimation of reference limits from routine laboratory results:")
+
+text_refineR <- HTML(paste0(
+  "If, during the verification with reflimR and its target values or own target values, a yellow or red bar appears, 
+  a follow-up analysis using refineR is recommended. The resulting reference intervals from refineR can be used as new target values
+  and re-verified with reflimR. If all indicators turn green, this suggests that the manufacturer’s target values are likely incorrect. 
+  If one or more indicators remain yellow or red, the data are considered too challenging for indirect methods. This assumption can be further 
+  evaluated in the “mclust” tab using a Gaussian mixture model (mclust)."))
 
 ####################################### User Interface ############################################
 
@@ -112,6 +130,7 @@ ui <- dashboardPage(
             max = 10000
           )
       ), 
+      uiOutput("refineR_checkbox_ui"),
       hr()
     )
   ),
@@ -202,11 +221,42 @@ ui <- dashboardPage(
             p(text),
             DT::dataTableOutput("table_zlog",  height = "700px")
           )
+        ),
+        
+        tabPanel( "refineR", 
+          icon = icon("table"),
+                  
+          box(
+            title = "",
+            status = "info",
+            width = 7,
+            solidHeader = TRUE,
+                    
+            p(text),
+            p(text_refineR),
+            #actionButton('calculate', 'Calculate RI with refineR', icon = icon("calculator")),
+            plotOutput("plotrefineR", height = "700px"),
+            DT::dataTableOutput("table_report_refineR")
+          )
+        ),
+        
+        tabPanel( "mclust", 
+          icon = icon("table"),
+                  
+          box(
+            title = "",
+            status = "info",
+            width = 7,
+            solidHeader = TRUE,
+                    
+            p(text),
+            plotOutput("plotmclust", height = "700px"),
+          )
         )
       ),
       
       box(
-        title = tagList(shiny::icon("table"), "Report"),
+        title = tagList(shiny::icon("table"), "Report for reflimR:"),
         status = "info",
         width = 5,
         solidHeader = TRUE,
@@ -292,7 +342,8 @@ server <- function(input, output, session) {
   # Create a reactive values to track the state of the checkboxes
   reactive_values <- reactiveValues(
     check_targetvalues = FALSE,
-    check_target = FALSE
+    check_target = FALSE,
+    check_refineR = FALSE
   )
   
   # Observe changes in check_targetvalues and update the reactive value
@@ -300,6 +351,7 @@ server <- function(input, output, session) {
     if (input$check_targetvalues) {
       reactive_values$check_targetvalues <- TRUE
       reactive_values$check_target <- FALSE
+      reactive_values$check_refineR <- FALSE
     } else {
       reactive_values$check_targetvalues <- FALSE
     }
@@ -310,8 +362,20 @@ server <- function(input, output, session) {
     if (input$check_target) {
       reactive_values$check_target <- TRUE
       reactive_values$check_targetvalues <- FALSE
+      reactive_values$check_refineR <- FALSE
     } else {
       reactive_values$check_target <- FALSE
+    }
+  })
+  
+  # Observe changes in check_refineR and update the reactive value
+  observeEvent(input$check_refineR, {
+    if (input$check_refineR) {
+      reactive_values$check_refineR <- TRUE
+      reactive_values$check_targetvalues <- FALSE
+      reactive_values$check_target <- FALSE
+    } else {
+      reactive_values$check_refineR <- FALSE
     }
   })
   
@@ -319,6 +383,7 @@ server <- function(input, output, session) {
   observe({
     updateCheckboxInput(session, "check_targetvalues", value = reactive_values$check_targetvalues)
     updateCheckboxInput(session, "check_target", value = reactive_values$check_target)
+    updateCheckboxInput(session, "check_refineR", value = reactive_values$check_refineR)
   })
   
   # observeEvent(input$submit, {
@@ -354,6 +419,7 @@ server <- function(input, output, session) {
     input$category
     input$check_plot.all
     input$check_targetvalues
+    input$check_refineR
     input$check_target
     input$dataset_file
     input$age_end
@@ -408,6 +474,7 @@ server <- function(input, output, session) {
     input$category
     input$check_plot.all
     input$check_targetvalues
+    input$check_refineR
     input$check_target
     input$dataset_file
     input$age_end
@@ -451,7 +518,7 @@ server <- function(input, output, session) {
     validate(need(nrow(dat) > 39,
                   "(reflim) n = 0. The absolute minimum for reference limit estimation is 40."))
     
-    if (input$check_target == FALSE && input$check_targetvalues == FALSE) {
+    if (input$check_target == FALSE && input$check_targetvalues == FALSE && input$check_refineR == FALSE) {
       reflim_text <- reflim(dat[,4], n.min = input$nmin, plot.all = FALSE)
     }
     
@@ -493,6 +560,18 @@ server <- function(input, output, session) {
       
       reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.all = FALSE)
     }
+    
+    if(input$check_refineR) {
+      
+      validate(need(refineR_done(),"(refineR) Please perform the refineR calculation first."))
+  
+      table_refineR <- getRI(fit_refineR())
+      targetvalues_low <- table_refineR$PointEst[1]
+      targetvalues_upper <- table_refineR$PointEst[2]
+      
+      reflim_text <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.all = FALSE)
+    }
+    
     report <- reflim_text
     
     return(report)
@@ -550,7 +629,18 @@ server <- function(input, output, session) {
       reflim_result <- reflim(dat[, 4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.all = reflimR.plot.all)
     }
     
-    if (input$check_target == FALSE && input$check_targetvalues == FALSE) {
+    if(input$check_refineR) {
+      
+      validate(need(refineR_done(), "(refineR) Please perform the refineR calculation first."))
+      
+      table_refineR <- getRI(fit_refineR())
+      targetvalues_low <- table_refineR$PointEst[1]
+      targetvalues_upper <- table_refineR$PointEst[2]
+      
+      reflim_result <- reflim(dat[,4], targets = c(targetvalues_low, targetvalues_upper), n.min = input$nmin, plot.all = reflimR.plot.all)
+    }
+    
+    if (input$check_target == FALSE && input$check_targetvalues == FALSE && input$check_refineR == FALSE) {
       reflim_result <- reflim(dat[, 4], n.min = input$nmin, plot.all = reflimR.plot.all)
     }
     
@@ -669,6 +759,100 @@ server <- function(input, output, session) {
     DT::formatStyle(columns = colnames(reflim_data)[4], 
                     color = styleEqual(reflim_data[,4], highzlogvalues(c(reflim_data[,6]))),
                     backgroundColor = styleEqual(reflim_data[,4], zlogcolor(c(reflim_data[,6]))))
+  })
+  
+  refineR_done <- reactiveVal(FALSE)
+  
+  observeEvent(input$parameters, { 
+    refineR_done(FALSE)
+  })
+  
+  observeEvent(input$category, { 
+    refineR_done(FALSE)
+  })
+  
+  observeEvent(input$sex, { 
+    refineR_done(FALSE)
+  })
+  
+  observeEvent(input$age_end, { 
+    refineR_done(FALSE)
+  })
+  
+  observeEvent(input$nmin, { 
+    refineR_done(FALSE)
+  })
+  
+  observeEvent(input$reset, { 
+    refineR_done(FALSE)
+  })
+  
+  observeEvent(input$dataset_file1, { 
+    refineR_done(FALSE)
+  })
+  
+  
+  fit_refineR <- reactive({
+    
+    input$parameters
+    input$category
+    input$sex
+    input$age_end
+    input$nmin
+    input$reset
+    input$dataset_file1
+    
+    withProgress(message = "RI calculation with refineR …", {
+      
+      dat <- reflim_data()
+      fit <- findRI(Data = dat[, 4])
+      refineR_done(TRUE)
+      
+      fit
+    })
+  })
+  
+  output$plotrefineR <- renderPlot({
+    plot(fit_refineR())
+  })
+  
+  output$refineR_checkbox_ui <- renderUI({
+    checkboxInput(
+      "check_refineR",
+      "Load calculated refineR values",
+      value = FALSE
+    )
+  })
+  
+  output$table_report_refineR <- DT::renderDataTable({
+    
+    table_refineR <- getRI(fit_refineR())
+    
+    converted_sex <- switch(input$sex,
+                            "f" = "Female(F)",
+                            "m" = "Male(M)",
+                            "t" = "Female(F) & Male(M)")
+      
+    table_report <- t(data.frame(
+        "Sex and Age:" = paste0(converted_sex, " (", input$age_end[1], "-", input$age_end[2], ")"),
+        "Category:" = input$category,
+        "Reference limit:" =  paste0(round(table_refineR$PointEst[1], 3) , " - " , round(table_refineR$PointEst[2], 3)),
+        check.names = FALSE))
+    colnames(table_report) <- input$parameter
+      
+    DT::datatable(table_report, extensions = 'Buttons',
+                  caption = htmltools::tags$caption(
+                  style = "caption-side: top; text-align: left; font-weight: bold; font-size: 16px;",
+                  "Report for refineR"
+                  ), options = list(dom = 'Bt', pageLength = 15, buttons = c('copy', 'csv', 'pdf', 'print')))
+  })
+  
+  output$plotmclust <- renderPlot({
+    
+    withProgress(message = "mclust Calculation …", {
+      dat <- reflim_data()
+      lab_mclust(dat[, 4])
+    })
   })
   
   output$download_ritable <- downloadHandler(
