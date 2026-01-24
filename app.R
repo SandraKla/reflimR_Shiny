@@ -54,17 +54,47 @@ if ("shinydashboard" %in% rownames(installed.packages())) {
     library(shinydashboard)}
 
 dataset_original <- reflimR::livertests
-text <- HTML(paste0(
-  "This Shiny App is based on the package ", 
-  a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html")), 
-  " for the estimation of reference limits from routine laboratory results:")
 
-text_refineR <- HTML(paste0(
+upload_text <- HTML(paste0(
+  "This Shiny App is based on the package ", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), 
+  " for the estimation of reference limits from routine laboratory results:", br(), br(), 
+  "These columns should be used for new data: Category: Name of the category to filter the data, Age: Age in years, Sex: m for male and f for female,
+  Value: Column name is the analyte name, values are the laboratory measures. The data from livertests serves as a template. 
+  To load new data, the data should be in CSV format with values separated by semicolons (;), and decimal numbers should use a comma (,) as the decimal separator. 
+  The first row should contain column headers.", br(), br(),
+  "On the left side, the sidebar allows you to select the laboratory parameter, category, age and gender group. 
+  In the “Target Values” section, you can load target values from targetvalues, load reference intervals estimated with refineR, or manually enter custom values."
+))
+
+reflimR_text <- HTML(paste0(
+  "These tab displays the corresponding plot and the outputs of the reflim() function, providing an estimation of new reference intervals or a verification of the selected target values. 
+  By clicking “Visualization of all plots across every process step”, all plots generated throughout the workflow can be displayed."
+))
+
+scatterplot_text <- HTML(paste0(
+  "The scatterplot shows the relationship between age and the laboratory value."
+))
+
+statistics_text <- HTML(paste0(
+  "The two figures show the distribution of sex across age and the laboratory value."
+))
+
+zlog_text <- HTML(paste0(
+  "zlog values are calculated from the dataset and the calculated reference intervals. The lower reference limits (LL) and upper reference limits (UL) can transform any result x into a zlog value using the following equation:
+  zlog(x) = (log(x)–(log(LL)+ log(UL))/2)*3.92/(log(UL)–log(LL)). Values ranging from –1.96 to 1.96 are considered normal, while values below –5 and above 5 indicate pathological conditions."
+))
+
+refineR_text <- HTML(paste0(
   "If, during the verification with reflimR and its target values or own target values, a yellow or red bar appears, 
   a follow-up analysis using refineR is recommended. The resulting reference intervals from refineR can be used as new target values
   and re-verified with reflimR. If all indicators turn green, this suggests that the manufacturer’s target values are likely incorrect. 
   If one or more indicators remain yellow or red, the data are considered too challenging for indirect methods. This assumption can be further 
-  evaluated in the “mclust” tab using a Gaussian mixture model (mclust)."))
+  evaluated in the “mclust” tab using a Gaussian mixture model (mclust)."
+))
+
+mclust_text <- HTML(paste0(
+  "Gaussian mixture modelling for the verification of reference intervals."
+))
 
 ####################################### User Interface ############################################
 
@@ -78,7 +108,7 @@ ui <- dashboardPage(
       div(
         style = "text-align:center",
         br(),
-        "Estimation of reference limits", br(),
+        "Estimation and Verification of reference limits", br(),
         "from routine laboratory results", hr()
       ),
       
@@ -148,7 +178,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                    
-            p(text),
+            p(upload_text),
             
             uiOutput("dataset_file"),
             actionButton('reset', 'Reset Input', icon = icon("trash")), hr(),
@@ -175,7 +205,7 @@ ui <- dashboardPage(
             solidHeader = TRUE,
             status = "info",
         
-            p(text),
+            p(reflimR_text),
             checkboxInput("check_plot.all", "Visualization of all plots across every process step"),
             plotOutput("plot", height = "700px")
           )
@@ -190,7 +220,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                    
-            p(text),
+            p(scatterplot_text),
             plotOutput("scatterplot", height = "700px")
           )
         ),
@@ -204,7 +234,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
       
-            p(text),
+            p(statistics_text),
             plotOutput("plot_statistics", height = "700px")
           )
         ),
@@ -218,7 +248,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                     
-            p(text),
+            p(zlog_text),
             DT::dataTableOutput("table_zlog",  height = "700px")
           )
         ),
@@ -232,8 +262,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                     
-            p(text),
-            p(text_refineR),
+            p(refineR_text),
             #actionButton('calculate', 'Calculate RI with refineR', icon = icon("calculator")),
             plotOutput("plotrefineR", height = "700px"),
             DT::dataTableOutput("table_report_refineR")
@@ -249,7 +278,7 @@ ui <- dashboardPage(
             width = 7,
             solidHeader = TRUE,
                     
-            p(text),
+            p(mclust_text),
             plotOutput("plotmclust", height = "700px"),
           )
         )
