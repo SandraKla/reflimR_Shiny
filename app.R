@@ -25,6 +25,7 @@
 source("zlog.R")
 source("reflimR_loop.R")
 source("mclust.R")
+source("VeRUS.R")
 
 ####################################### Libraries #################################################
 
@@ -48,6 +49,11 @@ if ("reflimR" %in% rownames(installed.packages())) {
     install.packages("reflimR")
     library(reflimR)}
 
+if ("readxl" %in% rownames(installed.packages())) {
+  library(readxl)} else{
+    install.packages("readxl")
+    library(readxl)}
+
 if ("shinydashboard" %in% rownames(installed.packages())) {
   library(shinydashboard)} else{
     install.packages("shinydashboard")
@@ -58,10 +64,10 @@ dataset_original <- reflimR::livertests
 upload_text <- HTML(paste0(
   "This Shiny App is based on the package ", a("reflimR", href = "https://cran.r-project.org/web/packages/reflimR/index.html"), 
   " for the estimation of reference limits from routine laboratory results:", br(), br(), 
-  "These columns should be used for new data: Category: Name of the category to filter the data, Age: Age in years, Sex: m for male and f for female,
-  Value: Column name is the analyte name, values are the laboratory measures. The data from livertests serves as a template. 
-  To load new data, the data should be in CSV format with values separated by semicolons (;), and decimal numbers should use a comma (,) as the decimal separator. 
-  The first row should contain column headers.", br(), br(),
+  "These columns should be used for new data: Category: Name of the category to filter the data; Age: Age in years; Sex: m for male and f for female;
+  Value: Column name is the analyte name, values are the laboratory measures.Starting with the fourth column, enter the laboratory value; the other three columns can be in any order. The data from *livertests* serves as a template. 
+  To load new data, the data should be in CSV format with values separated by semicolons (;), and decimal numbers should use a comma (,) as the decimal separator. The first row should contain column headers.
+  Alternatively, the data can be loaded into the editable table using the copy-and-paste function or with .xlsx.", br(), br(),
   "On the left side, the sidebar allows you to select the laboratory parameter, category, age and gender group. 
   In the “Target Values” section, you can load target values from targetvalues, load reference intervals estimated with refineR, or manually enter custom values."
 ))
@@ -169,7 +175,7 @@ ui <- dashboardPage(
     fluidRow(
       
       tabsetPanel( 
-        tabPanel("Upload", 
+        tabPanel("Data", 
           icon = icon("upload"),
                  
           box(
@@ -285,7 +291,7 @@ ui <- dashboardPage(
       ),
       
       box(
-        title = tagList(shiny::icon("table"), "Report for reflimR:"),
+        title = tagList(shiny::icon("table"), "Report:"),
         status = "info",
         width = 5,
         solidHeader = TRUE,
@@ -346,27 +352,48 @@ server <- function(input, output, session) {
   })
   
   output$parameters <- renderUI({
-    if (is.null(dataset_input())) { 
-      choices <- colnames(dataset_original)[4:length(colnames(dataset_original))]
+      if (is.null(dataset_input())) { 
+        choices <- colnames(dataset_original)[4:length(colnames(dataset_original))]
       } 
-    else{
-      validate(need(endsWith(dataset_input()[["datapath"]], ".csv"), "Check if you have used the correct template! It must be an CSV file!"))
-      choices <- colnames(read.csv2(dataset_input()[["datapath"]]))[4:length(colnames(read.csv2(dataset_input()[["datapath"]])))]
-    }
+      else{
+        datapath <- dataset_input()[["datapath"]]
+        
+        validate(need(
+          grepl("\\.(csv|xlsx)$", datapath, ignore.case = TRUE),
+          "Check if you have used the correct template! It must be a CSV or XLSX file!"
+        ))
+        
+        if (grepl("\\.csv$", datapath, ignore.case = TRUE)) {
+          dataset <- read.csv2(datapath)
+        } else {
+          dataset <- as.data.frame(readxl::read_excel(datapath), stringsAsFactors = FALSE)
+        }
+        
+        choices <- colnames(dataset)[4:ncol(dataset)]
+      }
     selectInput("parameter","Select laboratory value:", choices = choices, selected = TRUE)
-  })   
+  })      
   
   output$category <- renderUI({
-    if (is.null(dataset_input())) { 
-      choices <- unique(dataset_original[1])[[1]]
-    } 
-    else{
-      validate(need(endsWith(dataset_input()[["datapath"]], ".csv"), "Check if you have used the correct template! It must be an CSV file!"))
-      choices <- unique(read.csv2(dataset_input()[["datapath"]])[1])[[1]]
-    }
+      if (is.null(dataset_input())) { 
+        choices <- unique(dataset_original[[1]])
+      } else{
+        datapath <- dataset_input()[["datapath"]]
+        validate(need(
+          grepl("\\.(csv|xlsx)$", datapath, ignore.case = TRUE),
+          "Check if you have used the correct template! It must be a CSV or XLSX file!"
+        ))
+        if (grepl("\\.csv$", datapath, ignore.case = TRUE)) {
+          dataset <- read.csv2(datapath)
+        } else {
+          dataset <- as.data.frame(readxl::read_excel(datapath), stringsAsFactors = FALSE)
+        }
+        choices <- unique(dataset[[1]])
+      }
     choices <- c("Not selected", choices)
     selectInput("category", "Select category:", choices = choices, selected = "Not selected")
   })
+  
   
   # Create a reactive values to track the state of the checkboxes
   reactive_values <- reactiveValues(
@@ -459,12 +486,18 @@ server <- function(input, output, session) {
     if (is.null(dataset_input())) {
       dataset <- dataset_original
     } else {
+      datapath <- dataset_input()[["datapath"]]
+      
       validate(need(
-        endsWith(dataset_input()[["datapath"]], ".csv"),
-        "Check if you have used the correct template! It must be a CSV file!"
+        grepl("\\.(csv|xlsx)$", datapath, ignore.case = TRUE),
+        "Check if you have used the correct template! It must be a CSV or XLSX file!"
       ))
       
-      dataset <- read.csv2(dataset_input()[["datapath"]])
+      if (grepl("\\.csv$", datapath, ignore.case = TRUE)) {
+        dataset <- read.csv2(datapath)
+      } else if (grepl("\\.xlsx$", datapath, ignore.case = TRUE)) {
+        dataset <- as.data.frame(readxl::read_excel(datapath), stringsAsFactors = FALSE)
+      }
       
       validate(need(
         nrow(dataset) > 0,
@@ -476,7 +509,7 @@ server <- function(input, output, session) {
     dataset <- dataset[c(1, 2, 3, column_number)]
     
     if (!is.null(input$category) && input$category != "Not selected") {
-      dataset <- subset(dataset, dataset[[1]] == input$category)
+      dataset <- subset(dataset, category == input$category)
     }
     #}
     
@@ -519,7 +552,18 @@ server <- function(input, output, session) {
         "Check if you have used the correct template! It must be a CSV file!"
       ))
       
-      dataset <- read.csv2(dataset_input()[["datapath"]])
+      datapath <- dataset_input()[["datapath"]]
+      
+      validate(need(
+        grepl("\\.(csv|xlsx)$", datapath, ignore.case = TRUE),
+        "Check if you have used the correct template! It must be a CSV or XLSX file!"
+      ))
+      
+      if (grepl("\\.csv$", datapath, ignore.case = TRUE)) {
+        dataset <- read.csv2(datapath)
+      } else if (grepl("\\.xlsx$", datapath, ignore.case = TRUE)) {
+        dataset <- as.data.frame(readxl::read_excel(datapath), stringsAsFactors = FALSE)
+      }
       
       validate(need(
         nrow(dataset) > 0,
@@ -740,27 +784,51 @@ server <- function(input, output, session) {
                               "m" = "Male(M)",
                               "t" = "Female(F) & Male(M)")
       
+      if(report$lognormal){
+        lambda = 0
+      } else{
+        lambda = 1
+      }
+      
+      report_versus <- verus.limits(report$limits[1], report$limits[2], lambda = lambda)
+      
+      report_lower_VeRUS <- c(round(report_versus$lower.lim.low, 1), round(report_versus$lower.lim.upp, 1))
+      report_upper_VeRUS <- c(round(report_versus$upper.lim.low, 1), round(report_versus$upper.lim.upp, 1))
+      
+      if(is.na(report$targets[1])){
+        report_lower_target_VeRUS <- c(NA, NA)
+        report_upper_target_VeRUS <- c(NA, NA)
+      } else{
+        report_target_versus <- verus.limits(report$targets[1], report$targets[2], lambda = lambda)
+        
+        report_lower_target_VeRUS <- c(round(report_target_versus$lower.lim.low, 1), round(report_target_versus$lower.lim.upp, 1))
+        report_upper_target_VeRUS <- c(round(report_target_versus$upper.lim.low, 1), round(report_target_versus$upper.lim.upp, 1))
+      }
+      
       table_report <- t(data.frame(
-                                "Sex and Age:" = paste0(converted_sex, " (", input$age_end[1], "-", input$age_end[2], ")"),
-                                "Category:" = input$category,
-                                "Mean:" = report$stats[1],
-                                "Standard deviation:" = report$stats[2],
-                                "Lognormal Distribution:" = report$lognormal,
-                                "Reference limit:" =  paste0(report$limits[1] , " - " , report$limits[2]),
-                                "Lower tolerance intervals:" = paste0(report$limits[3], " - " , report$limits[4]),
-                                "Upper tolerance intervals:" = paste0(report$limits[5], " - " , report$limits[6]),
-                                "Target Limits:" = paste0(report$targets[1], " - " , report$targets[2]),
-                                "Lower target tolerance intervals:" = paste0(report$targets[3], " - " , report$targets[4]),
-                                "Upper target tolerance intervals:" = paste0(report$targets[5], " - " , report$targets[6]),
-                                "Lower confidence intervals:" = paste0(report$confidence.int[1], " - " , report$confidence.int[2]),
-                                "Upper confidence intervals:" = paste0(report$confidence.int[3], " - " , report$confidence.int[4]),
-                                "Interpretation of the lower limit:" = report$interpretation[1],
-                                "Interpretation of the upper limit:" = report$interpretation[2],
-                                check.names = FALSE))
+        "Sex and Age:" = paste0(converted_sex, " (", input$age_end[1], "-", input$age_end[2], ")"),
+        "Category:" = input$category,
+        "Mean (sd):" = paste0(round(report$stats[1], 2), " (", round(report$stats[2], 2), ")"),
+        "Lognormal Distribution:" = report$lognormal,
+        "Reference limit:" =  paste0(report$limits[1] , " - " , report$limits[2]),
+        "Lower tolerance intervals (pU):" = paste0(report$limits[3], " - " , report$limits[4]),
+        "Upper tolerance intervals (pU):" = paste0(report$limits[5], " - " , report$limits[6]),
+        "Lower VeRUS intervals:" = paste0(report_lower_VeRUS[1], " - " , report_lower_VeRUS[2]),
+        "Upper VeRUS intervals:" = paste0(report_upper_VeRUS[1], " - " ,report_upper_VeRUS[2]),
+        "Lower confidence intervals:" = paste0(report$confidence.int[1], " - " , report$confidence.int[2]),
+        "Upper confidence intervals:" = paste0(report$confidence.int[3], " - " , report$confidence.int[4]),
+        "Target Limits:" = paste0(report$targets[1], " - " , report$targets[2]),
+        "Lower target tolerance intervals (pU):" = paste0(report$targets[3], " - " , report$targets[4]),
+        "Upper target tolerance intervals (pU):" = paste0(report$targets[5], " - " , report$targets[6]),
+        "Lower VeRUS target intervals:" = paste0(report_lower_target_VeRUS[1], " - " , report_lower_target_VeRUS[2]),
+        "Upper VeRUS target intervals:" = paste0(report_upper_target_VeRUS[1], " - " , report_upper_target_VeRUS[2]),
+        "Interpretation of the lower limit:" = report$interpretation[1],
+        "Interpretation of the upper limit:" = report$interpretation[2],
+        check.names = FALSE))
       colnames(table_report) <- input$parameter
-    
+      
       DT::datatable(table_report, extensions = 'Buttons',
-                    options = list(dom = 'Bt', pageLength = 15, buttons = c('copy', 'csv', 'pdf', 'print')))
+                    options = list(dom = 'Bt', pageLength = 18, buttons = c('copy', 'csv', 'pdf', 'print')))
     }
   })
   
