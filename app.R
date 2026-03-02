@@ -286,6 +286,7 @@ ui <- dashboardPage(
                     
             p(mclust_text),
             plotOutput("plotmclust", height = "700px"),
+            plotOutput("plotmclustbic", height = "700px"),
           )
         )
       ),
@@ -805,23 +806,25 @@ server <- function(input, output, session) {
         report_upper_target_VeRUS <- c(round(report_target_versus$upper.lim.low, 1), round(report_target_versus$upper.lim.upp, 1))
       }
       
+      lognormal_value <<- report$lognormal
+      
       table_report <- t(data.frame(
         "Sex and Age:" = paste0(converted_sex, " (", input$age_end[1], "-", input$age_end[2], ")"),
         "Category:" = input$category,
         "Mean (sd):" = paste0(round(report$stats[1], 2), " (", round(report$stats[2], 2), ")"),
         "Lognormal Distribution:" = report$lognormal,
         "Reference limit:" =  paste0(report$limits[1] , " - " , report$limits[2]),
-        "Lower tolerance intervals (pU):" = paste0(report$limits[3], " - " , report$limits[4]),
-        "Upper tolerance intervals (pU):" = paste0(report$limits[5], " - " , report$limits[6]),
-        "Lower VeRUS intervals:" = paste0(report_lower_VeRUS[1], " - " , report_lower_VeRUS[2]),
-        "Upper VeRUS intervals:" = paste0(report_upper_VeRUS[1], " - " ,report_upper_VeRUS[2]),
+        "Lower tolerance intervals (EL):" = paste0(report$limits[3], " - " , report$limits[4]),
+        "Upper tolerance intervals (EL):" = paste0(report$limits[5], " - " , report$limits[6]),
+        "Lower UM intervals:" = paste0(report_lower_VeRUS[1], " - " , report_lower_VeRUS[2]),
+        "Upper UM intervals:" = paste0(report_upper_VeRUS[1], " - " ,report_upper_VeRUS[2]),
         "Lower confidence intervals:" = paste0(report$confidence.int[1], " - " , report$confidence.int[2]),
         "Upper confidence intervals:" = paste0(report$confidence.int[3], " - " , report$confidence.int[4]),
         "Target Limits:" = paste0(report$targets[1], " - " , report$targets[2]),
-        "Lower target tolerance intervals (pU):" = paste0(report$targets[3], " - " , report$targets[4]),
-        "Upper target tolerance intervals (pU):" = paste0(report$targets[5], " - " , report$targets[6]),
-        "Lower VeRUS target intervals:" = paste0(report_lower_target_VeRUS[1], " - " , report_lower_target_VeRUS[2]),
-        "Upper VeRUS target intervals:" = paste0(report_upper_target_VeRUS[1], " - " , report_upper_target_VeRUS[2]),
+        "Lower target tolerance intervals (EL):" = paste0(report$targets[3], " - " , report$targets[4]),
+        "Upper target tolerance intervals (EL):" = paste0(report$targets[5], " - " , report$targets[6]),
+        "Lower UM target intervals:" = paste0(report_lower_target_VeRUS[1], " - " , report_lower_target_VeRUS[2]),
+        "Upper UM target intervals:" = paste0(report_upper_target_VeRUS[1], " - " , report_upper_target_VeRUS[2]),
         "Interpretation of the lower limit:" = report$interpretation[1],
         "Interpretation of the upper limit:" = report$interpretation[2],
         check.names = FALSE))
@@ -948,7 +951,15 @@ server <- function(input, output, session) {
     
     withProgress(message = "mclust Calculation …", {
       dat <- reflim_data()
-      lab_mclust(dat[, 4])
+      lab_mclust(dat[, 4], lognormal = lognormal_value, remove.extremes = T)
+    })
+  })
+  
+  output$plotmclustbic <- renderPlot({
+    
+    withProgress(message = "mclust Calculation …", {
+      dat <- reflim_data()
+      lab_mclust(dat[, 4], lognormal = lognormal_value, remove.extremes = T, plot.bic = T)
     })
   })
   

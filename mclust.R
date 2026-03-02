@@ -8,6 +8,7 @@
 #'   The length of \code{x} should be at least 200 observations.
 #' @param lognormal Logical; if \code{TRUE}, a lognormal transformation is applied
 #'   before clustering. Default is \code{FALSE}.
+#' @param remove.extremes Remove extremes
 #' @param targets Optional numeric vector specifying target values. Default is \code{NULL}.
 #' @param plot.it Logical; if \code{TRUE}, diagnostic plots are generated.
 #'   Default is \code{TRUE}.
@@ -31,19 +32,39 @@
 #' @param apply.rounding Logical; if \code{TRUE}, results are rounded.
 #'   Default is \code{TRUE}.
 #' @param digits Integer specifying the number of decimal places used for rounding.
-lab_mclust <- function(x, lognormal = FALSE, targets = NULL,
+lab_mclust <- function(x, lognormal, remove.extremes, 
+                       targets = NULL,
                        plot.it = TRUE, add.boxplot = TRUE, 
                        plot.legend = TRUE, pos.legend = "topright",
                        plot.bic = FALSE,
+                       xlim = NULL, ylim = NULL,
                        main = "", xlab = "",
                        hist.bins = 50, model = NULL, n.cluster = NULL,
                        apply.rounding = TRUE, digits = NULL){
 
+  x <- na.omit(as.numeric(x[x > 0]))
+  lx <- length(x)
+  
+  if(lx < 200){
+    warning(paste("The data has", lx, "numeric elements, where 200 are recommended."))
+  }
+  
+  #x: original data (eventually truncated)
+  if(remove.extremes){
+    x <- x[x < (median(x) + 6 * IQR(x)) ]
+  }
+  
+  #xx: logtransformed or untransformed data
   if(lognormal){
     xx <- log(x)
   }else{
     xx <- x
   }
+  
+  if(length(xx) < 200 & lx >= 200){
+    warning(paste("After removal of extremes, the data has", length(xx), "numeric elements, where 200 are recommended."))
+  }
+  
   if(is.null(model)){
     mc <- Mclust(xx, G = n.cluster)
   }else{
@@ -83,6 +104,7 @@ lab_mclust <- function(x, lognormal = FALSE, targets = NULL,
   }
   
   if(plot.it){
+    # the plot is made with original values x (not xx!)
     col = rainbow(9)
     d <- density(x)
     y.max <- max(d$y) * 1.1
@@ -92,10 +114,12 @@ lab_mclust <- function(x, lognormal = FALSE, targets = NULL,
     }else{
       breaks <- "Sturges"
     }
+    if(is.null(xlim)){xlim <- c(min(x), max(x))}
+    if(is.null(ylim)){ylim <- c(0, y.max * 1.1)}
     hist(x, freq = FALSE, 
          breaks = breaks,
          col = "white", border = "grey", 
-         ylim = c(0, y.max),yaxt = "n",
+         xlim = xlim, ylim = ylim, yaxt = "n",
          main = main, xlab = xlab, ylab = "")
     box()
     lines(d, lty = 2)
@@ -121,7 +145,7 @@ lab_mclust <- function(x, lognormal = FALSE, targets = NULL,
     if(plot.legend){
       legend(pos.legend, 
              paste0(round(res.tab$ll, digits), "-", round(res.tab$ul, digits),
-                   " (", res.tab$percent, "%)"),
+                    " (", res.tab$percent, "%)"),
              lwd = 2, col = col[1 : nrow(res.tab)], cex = 0.8, bty = "n")
     }
     if(plot.bic){
@@ -131,5 +155,6 @@ lab_mclust <- function(x, lognormal = FALSE, targets = NULL,
   if(is.null(n.cluster)){n.c <- mc$G} else {
     n.c <- paste(mc$G, "from", deparse(n.cluster)) }
   return(list(n.cluster = noquote(n.c), 
-              stats = res.tab, BIC = mc$BIC))
+              stats = res.tab, y.max = y.max,
+              BIC = mc$BIC))
 }
