@@ -894,7 +894,7 @@ server <- function(input, output, session) {
   
   fit_refineR <- reactive({
     
-    input$parameters
+    input$parameter
     input$category
     input$sex
     input$age_end
