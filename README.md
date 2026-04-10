@@ -1,5 +1,14 @@
 # Shiny App for reflimR
 
+⚠️ **Project Status: Deprecated**
+ 
+This project is no longer actively maintained and will not be further developed.  
+The functionality has been integrated into the successor project VeRIf 👉 https://github.com/SandraKla/VeRIf  
+ 
+Please refer to that repository for the latest updates and continued development.
+
+---
+
 ![](https://img.shields.io/github/license/SandraKla/reflimR_Shiny.svg)
 ![](https://img.shields.io/github/last-commit/SandraKla/reflimR_Shiny.svg)
 
